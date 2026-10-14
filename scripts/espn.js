@@ -143,16 +143,12 @@ async function buildSnapshot(getJSON, leagueId, season, swid) {
   }
   const ppr = (s.scoringSettings.scoringItems || []).find((i) => i.statId === 53);
 
-  const memberName = {};
-  for (const m of meta.members || []) memberName[m.id] = m.displayName;
-
   const teams = meta.teams.map((t) => {
     const o = (t.record && t.record.overall) || {};
     return {
       id: t.id,
       ab: t.abbrev,
       name: (t.name || `${t.location || ''} ${t.nickname || ''}`).trim().replace(/\s+/g, ' '),
-      owner: memberName[(t.owners || [])[0]] || '',
       w: o.wins || 0, l: o.losses || 0, t: o.ties || 0,
       pf: r1(o.pointsFor || 0), pa: r1(o.pointsAgainst || 0),
     };

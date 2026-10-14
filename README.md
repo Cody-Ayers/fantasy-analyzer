@@ -1,6 +1,21 @@
 # Lineup Lab
 
-A phone-first analyzer for ESPN fantasy football leagues. It finds your best lineup each week, the waiver pickups and trades that would help your team most, and your playoff odds.
+A phone-first analyzer for ESPN fantasy football leagues. It finds your best
+lineup each week, the waiver pickups and trades that would help your team most,
+and your playoff odds. It runs for free on GitHub: the data refreshes itself every
+morning, and the site works like an app on your phone's home screen.
+
+**Want it for your league?** Follow [Set it up for your own league](#set-it-up-for-your-own-league)
+below. It takes about 10 minutes and needs only a free GitHub account.
+
+## Features
+
+- **Team:** your best legal lineup for the week and your win chance against this week's opponent
+- **Waivers:** the best available players at each position, flagged when they'd beat one of your starters, plus who to drop
+- **Trades:** trades that help *both* teams, so they're realistic to propose
+- **League:** standings, all-play record, luck, and playoff odds from 5,000 simulated seasons
+- **Player panel:** tap any name for snap share, consistency, upcoming matchups and expert rankings
+- **Refresh button** to pull new data on demand, plus automatic daily updates
 
 ## How it works
 
@@ -42,62 +57,89 @@ ESPN API ──► scripts/fetch.mjs ──► site/data/*.json ──► site/ 
   - *Next 4 weeks*: points each defense has allowed per game to his position, from every player in your league's pool, split into thirds: tough, average, easy.
 - **Outside signals** shown next to the numbers: ESPN's expert consensus rank for the week, ESPN's analyst write-up, ESPN ownership trend, and Sleeper's most-added list for the last 48 hours (HOT tag = top 25).
 
-## Run it on your Mac
+## Set it up for your own league
+
+You'll need a free [GitHub account](https://github.com/signup), Chrome on a
+computer, and an ESPN fantasy football league.
+
+### 1. Make your own copy
+On this repo's GitHub page, click **Use this template → Create a new repository**.
+Name it `fantasy-analyzer`. You can make it **Private** if you have GitHub Pro; on a
+free account, keep it Public (see [Privacy](#privacy)).
+
+GitHub tries to run the refresh as soon as your copy is created. That first run
+fails because the secrets aren't set yet; ignore it.
+
+### 2. Add your league IDs
+Open your league on ESPN. The ID is the number after `leagueId=` in the address
+bar. In your new repo, open `leagues.json`, click the pencil to edit, and replace
+the IDs (and the season, if needed):
+
+```json
+{
+  "season": 2026,
+  "leagues": [123456]
+}
+```
+
+You can list more than one league. Click **Commit changes**.
+
+### 3. Get your ESPN cookies
+In Chrome, sign in to [ESPN Fantasy](https://fantasy.espn.com) and open your league. Then:
+**View → Developer → Developer Tools → Application tab → Cookies → https://fantasy.espn.com**.
+Copy the values of `espn_s2` (a long string) and `SWID` (looks like `{ABCD-...}`,
+braces included).
+
+These work like a password for your ESPN account. Only paste them into GitHub's
+**Secrets** page (next step), never into code, issues or chat. They last for months;
+if the refresh ever fails with a 401 error, copy fresh ones.
+
+### 4. Add the cookies as secrets
+In your repo: **Settings → Secrets and variables → Actions → New repository secret**.
+Add two secrets:
+- `ESPN_S2`: your espn_s2 value
+- `SWID`: your SWID value
+
+### 5. Turn on GitHub Pages
+**Settings → Pages → Build and deployment → Source: GitHub Actions**.
+
+### 6. Run it
+**Actions → Refresh leagues and publish → Run workflow**. In about a minute your
+site is live at `https://YOUR-USERNAME.github.io/fantasy-analyzer/`. The first run
+also removes the original leagues' data from your copy.
+
+On your iPhone, open the site in Safari and choose **Share → Add to Home Screen**.
+From then on it refreshes itself every morning, plus Sunday before kickoff.
+
+### 7. (Optional) Turn on the Refresh button
+The **Refresh** button starts the same update from your phone. A public site can't
+keep a secret, so the first time you tap it, it asks for a GitHub token:
+
+1. Go to [github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new).
+2. **Repository access:** Only select repositories → your `fantasy-analyzer`.
+3. **Permissions → Repository permissions → Actions:** Read and write. Nothing else.
+4. Generate, copy, and paste it into the app.
+
+The token is saved only in that browser (`localStorage`) and only sent to
+`api.github.com` (see `site/refresh.js`). Do it once per device.
+
+## Privacy
+
+On a free GitHub plan, the repo and the site are public. Anyone with the link can
+see your league's team names, rosters and standings. Your ESPN cookies are never
+published: they stay in GitHub Secrets. Lineup Lab doesn't save league members'
+names, only team names.
+
+## Run it on your computer
 
 ```bash
-cd ~/Projects/fantasy-analyzer
+git clone https://github.com/YOUR-USERNAME/fantasy-analyzer.git
+cd fantasy-analyzer
 python3 -m http.server 8000 -d site
 # open http://localhost:8000
 ```
 
-## Put it on GitHub Pages
-
-### 1. Get your ESPN cookies
-In Chrome, sign in to ESPN Fantasy and open your league. Then:
-**View → Developer → Developer Tools → Application tab → Cookies → https://fantasy.espn.com**.
-Copy the values of `espn_s2` (a long string) and `SWID` (looks like `{ABCD-...}`, braces included).
-
-These work like a password for your ESPN account. Only paste them into GitHub's **Secrets** page, never into code or chat. They last for months; if the refresh starts failing with a 401 error, grab fresh ones.
-
-### 2. Create the repo and push
-Create an empty repo on github.com (for example `fantasy-analyzer`), then:
-
-```bash
-cd ~/Projects/fantasy-analyzer
-git init
-git add .
-git commit -m "First version of Lineup Lab"
-git branch -M main
-git remote add origin https://github.com/YOUR-USERNAME/fantasy-analyzer.git
-git push -u origin main
-```
-
-### 3. Add the secrets
-Repo → **Settings → Secrets and variables → Actions → New repository secret**. Add two secrets:
-- `ESPN_S2`: your espn_s2 value
-- `SWID`: your SWID value
-
-### 4. Turn on Pages
-Repo → **Settings → Pages → Source: GitHub Actions**.
-
-### 5. Run it
-Repo → **Actions → Refresh leagues and publish → Run workflow**. In about a minute your site is live at
-`https://YOUR-USERNAME.github.io/fantasy-analyzer/`. On your iPhone, open it in Safari and choose **Share → Add to Home Screen**.
-
-After that it refreshes on its own every morning, plus Sunday before kickoff.
-
-### The Refresh button
-The **Refresh** button in the app starts the same workflow from your phone. A public site can't keep a secret, so the first time you tap it, it asks for a GitHub token:
-
-1. Go to [github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new).
-2. **Repository access:** Only select repositories → `fantasy-analyzer`.
-3. **Permissions → Repository permissions → Actions:** Read and write. Nothing else.
-4. Generate, copy, and paste it into the app.
-
-The token is saved only in that browser (`localStorage`) and only sent to `api.github.com` (see `site/refresh.js`). Do it once per device. If the token expires or is deleted, the app asks again.
-
-> **Privacy:** on a free GitHub plan, the repo and the site are public. Anyone with the link could see your league's rosters and standings, but never your cookies, which stay in Secrets.
+To refresh the data locally: `ESPN_S2=... SWID=... node scripts/fetch.mjs`
 
 ## Ideas for later
-- Add a league: put its ID in `leagues.json`.
 - Tune the model: the numbers at the top of `site/analysis.js` (`INJURY_KEEP`, `SD_SHARE`) and the 65/35 blend in `rosPPG()`.

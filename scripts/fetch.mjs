@@ -6,7 +6,7 @@
 // ESPN_S2 and SWID are the two ESPN login cookies. They're read from
 // environment variables so they never get written into the code or the repo.
 
-import { writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync, readdirSync, unlinkSync } from 'node:fs';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
@@ -62,3 +62,13 @@ for (const id of config.leagues) {
   console.log(`✓ ${snap.league.name}: week ${snap.week}, ${snap.players.length} players`);
 }
 writeFileSync('site/data/leagues.json', JSON.stringify(index, null, 2));
+
+// Remove snapshots of leagues that are no longer in leagues.json (for example
+// the original owner's leagues in a copy made from the template).
+const keep = new Set(['leagues.json', ...config.leagues.flatMap((id) => [`${id}.json`, `${id}-players.json`])]);
+for (const file of readdirSync('site/data')) {
+  if (file.endsWith('.json') && !keep.has(file)) {
+    unlinkSync(`site/data/${file}`);
+    console.log(`  removed old ${file}`);
+  }
+}
