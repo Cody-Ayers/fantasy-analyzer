@@ -104,9 +104,38 @@ function renderTeam() {
 
   <h2>Bench</h2>
   <div class="sheetbox"><ul class="rows">
-    ${tw.best.bench.sort((a, b) => b.v - a.v).map((x) => playerRow(x.p.s === 'IR' ? 'IR' : 'BN', x.p, x.v)).join('')}
-    ${A.rosterOf(s, s.me).filter((p) => p.s === 'IR' && !tw.best.bench.some((x) => x.p.id === p.id) && !tw.best.starters.some((x) => x.p?.id === p.id)).map((p) => playerRow('IR', p, 0)).join('')}
-  </ul></div>`;
+    ${tw.best.bench.filter((x) => x.p.s !== 'IR').sort((a, b) => b.v - a.v).map((x) => playerRow('BN', x.p, x.v)).join('')}
+  </ul></div>
+
+  ${irSection(s)}`;
+}
+
+// Injured reserve: every IR spot, filled or open, plus moves worth making.
+function irSection(s) {
+  const ir = A.irStatus(s);
+  if (!ir.slots) return '';
+  const rows = ir.inIR.map(({ p, eligible }) => `<li class="row ${eligible ? '' : 'ir-bad'}">
+      <span class="slot">IR</span>
+      <div><div class="pname">${nameBtn(p)} ${flags(p)}</div>
+        ${meta(p, [game(p), eligible ? 'IR-eligible' : '<span class="bad">No longer IR-eligible</span>'])}</div>
+      <div class="pts">${f1(A.rosPPG(p))}<small>ROS per game</small></div></li>`).join('');
+  const empty = Array.from({ length: ir.open }, () => `<li class="row"><span class="slot">IR</span>
+      <div><div class="pname dim">Open spot</div><div class="meta"><span>${ir.candidates.length ? 'See below' : 'Nobody on your roster qualifies right now'}</span></div></div><div></div></li>`).join('');
+  const notes = [];
+  for (const { p, eligible } of ir.inIR) {
+    if (!eligible) notes.push(`<li class="lvl-bad">${esc(p.n)} is listed ${p.i ? ({ Q: 'questionable', D: 'doubtful' }[p.i] || p.i) : 'healthy'}, so ESPN won't let you add or trade anyone until he moves back to your roster. You'll need an open bench spot for him.</li>`);
+  }
+  if (ir.candidates.length) {
+    const fits = ir.candidates.slice(0, ir.open);
+    if (fits.length) notes.push(`<li class="lvl-info">Move ${esc(list(fits.map((p) => p.n)))} to IR. ${fits.length > 1 ? 'They\'re' : 'He\'s'} eligible, and it frees ${fits.length > 1 ? `${fits.length} bench spots` : 'a bench spot'} at no cost.</li>`);
+    const rest = ir.candidates.slice(ir.open);
+    if (rest.length) notes.push(`<li class="lvl-warn">${esc(list(rest.map((p) => p.n)))} ${rest.length > 1 ? 'are' : 'is'} IR-eligible too, but your IR spots are full.</li>`);
+  }
+  return `
+  <h2>Injured reserve</h2>
+  <p class="explain">${ir.inIR.length} of ${ir.slots} spots used. Players on IR don't count against your roster, but only players listed out, on IR or suspended can stay there.</p>
+  ${notes.length ? `<ul class="alerts" style="margin-bottom:10px">${notes.join('')}</ul>` : ''}
+  <div class="sheetbox"><ul class="rows">${rows}${empty}</ul></div>`;
 }
 
 // ---------- Waivers ----------

@@ -150,6 +150,18 @@ export function thisWeek(snap, teamId = snap.me) {
 // Open roster spots. Players stuck in IR who are no longer IR-eligible must
 // come back to the roster before ESPN allows any add, so they count as filled.
 // Can be negative: you're over the limit once they come back.
+// Your injured reserve: who's in each IR spot, whether ESPN still allows him
+// there, how many spots are open, and bench players who could move in.
+export function irStatus(snap, teamId = snap.me) {
+  const roster = rosterOf(snap, teamId);
+  const slots = snap.league.slots.IR || 0;
+  const inIR = roster.filter((p) => p.s === 'IR').map((p) => ({ p, eligible: IR_ELIGIBLE.has(p.i) }));
+  const open = Math.max(0, slots - inIR.length);
+  // Bench players hurt badly enough for IR: moving them frees a bench spot for free.
+  const candidates = roster.filter((p) => p.s !== 'IR' && IR_ELIGIBLE.has(p.i));
+  return { slots, inIR, open, candidates };
+}
+
 export function openSpots(snap, roster) {
   const s = snap.league.slots;
   const cap = STARTING_SLOTS.reduce((n, k) => n + (s[k] || 0), 0) + (s.BE || 0);

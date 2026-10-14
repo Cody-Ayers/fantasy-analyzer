@@ -368,3 +368,5 @@ select {
 .row.arow { grid-template-columns: 26px minmax(0, 1fr) auto; }
 .row.arow .slot { font-size: 15px; }
 .pts small.sub { margin-top: 4px; font-size: 11px; }
+
+.row.ir-bad .slot { color: var(--bad); }
