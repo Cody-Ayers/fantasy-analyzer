@@ -34,6 +34,7 @@ ESPN API ──► scripts/fetch.mjs ──► site/data/*.json ──► site/ 
 - **Win chance** treats each team's score as its projection ± about 20% (a normal distribution).
 - **Playoff odds** play out the remaining schedule 5,000 times with random scores around each team's projection. Ties go to total points, like your leagues.
 - **All-play record**: your record if you'd played every team every week. **Luck** = actual wins minus what all-play says you earned.
+- **Available players** (Waivers tab): the top 15 free agents and waiver players at each position, sorted by rest-of-season points per game or this week's projection. *UPGRADE* = he projects better than your weakest starter at that position.
 - **Who to drop** uses *value over replacement*: each of your players is compared with the best free agent at his position, so an easily replaced kicker counts as cheap. A negative cost means a free agent is simply better ("Upgrade available").
 - **Player panel** (tap any name):
   - *Snap share*: his offensive snaps ÷ his team's, from Sleeper. "Rising" or "falling" means his last 2 games moved 8+ points from his earlier average.

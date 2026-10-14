@@ -358,3 +358,13 @@ select {
 .ease { text-align: right; font-weight: 600; }
 .ease.easy { color: var(--good); } .ease.tough { color: var(--bad); } .ease.average { color: var(--chalk); }
 .ease .dim { font-weight: 400; font-size: 13px; margin-left: 4px; }
+
+/* ---------- available players ---------- */
+.avail-controls { display: grid; gap: 8px; margin-bottom: 10px; }
+.avail-controls .seg { background: var(--turf-2); border-radius: 10px; padding: 3px; gap: 2px; }
+.avail-controls .seg button { border-bottom: 0; border-radius: 8px; padding: 8px 4px; font-size: 16px; }
+.avail-controls .seg button.on { background: var(--turf-3); color: var(--you); }
+.sort-seg button { font-size: 15px; }
+.row.arow { grid-template-columns: 26px minmax(0, 1fr) auto; }
+.row.arow .slot { font-size: 15px; }
+.pts small.sub { margin-top: 4px; font-size: 11px; }

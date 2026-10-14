@@ -128,6 +128,42 @@ function altLine(x) {
     : `Next best: ${x.alternatives.map((a) => `${esc(a.drop.n)} (${sign(a.perWeek)})`).join(', ')}`}</span>`;
 }
 
+// ---------- Available players by position ----------
+const AV_POS = ['QB', 'RB', 'WR', 'TE', 'K', 'DST'];
+function availableSection(s) {
+  const av = state.avail ??= { pos: store.get('availPos') || 'RB', sort: store.get('availSort') || 'ros' };
+  const value = av.sort === 'week' ? (p) => p.pw : A.rosPPG;
+  const other = av.sort === 'week' ? A.rosPPG : (p) => p.pw;
+  const list = s.players.filter((p) => p.tm === 0 && p.p === av.pos)
+    .sort((a, b) => value(b) - value(a) || b.own - a.own).slice(0, 15);
+
+  // Your weakest starter at this position (rest-of-season), to flag real upgrades.
+  const mine = A.bestLineup(A.rosterOf(s, s.me).filter((p) => p.s !== 'IR'), s.league.slots, A.rosPPG)
+    .starters.filter((x) => x.p && x.p.p === av.pos);
+  const weakest = mine.length ? mine.reduce((a, b) => (a.v < b.v ? a : b)) : null;
+
+  const posBtn = (k) => `<button type="button" data-apos="${k}" class="${av.pos === k ? 'on' : ''}" aria-pressed="${av.pos === k}">${k === 'DST' ? 'D/ST' : k}</button>`;
+  const sortBtn = (k, label) => `<button type="button" data-asort="${k}" class="${av.sort === k ? 'on' : ''}" aria-pressed="${av.sort === k}">${label}</button>`;
+  const rows = list.map((p, i) => {
+    const upgrade = weakest && A.rosPPG(p) > weakest.v + 0.3;
+    const trend = p.tr >= 1 ? `<span class="good">up ${p.tr}%</span>` : p.tr <= -1 ? `<span class="bad">down ${Math.abs(p.tr)}%</span>` : '';
+    return `<li class="row arow">
+      <span class="slot">${i + 1}</span>
+      <div><div class="pname">${nameBtn(p)} ${flags(p, upgrade ? '<span class="flag START">UPGRADE</span>' : '')}</div>
+        ${meta(p, [game(p), `${Math.round(p.own)}% owned`, trend && `${trend} this week`, p.er ? `${p.p === 'DST' ? 'D/ST' : p.p}${p.er} by experts` : '', p.fa === 'W' ? 'waivers' : 'free agent'])}</div>
+      <div class="pts">${f1(value(p))}<small>${av.sort === 'week' ? 'this week' : 'per game'}</small><small class="sub">${f1(other(p))} ${av.sort === 'week' ? 'ROS' : 'this wk'}</small></div></li>`;
+  }).join('');
+
+  return `
+  <h2>Available players</h2>
+  <p class="explain">The top 15 free agents and waiver players at each position. <b>UPGRADE</b> means he projects better the rest of the season than your weakest starter there${weakest ? ` (${esc(weakest.p.n)}, ${f1(weakest.v)} a game)` : ''}.</p>
+  <div class="avail-controls">
+    <div class="seg pos-seg" role="group" aria-label="Position">${AV_POS.map(posBtn).join('')}</div>
+    <div class="seg sort-seg" role="group" aria-label="Sort by">${sortBtn('ros', 'Rest of season')}${sortBtn('week', 'This week')}</div>
+  </div>
+  <div class="sheetbox"><ul class="rows">${rows || '<li class="empty">Nobody available at this position.</li>'}</ul></div>`;
+}
+
 function renderWaivers() {
   const s = state.snap;
   const picks = state.cache.waivers ??= A.waiverTargets(s);
@@ -174,6 +210,8 @@ function renderWaivers() {
   <h2>Best pickups</h2>
   <p class="explain">Each free agent is tried on your roster. We add him, drop whoever hurts least, and re-run your best lineup for all ${weeksLeft} remaining weeks, playoffs included.</p>
   ${cards || '<div class="sheetbox empty">No free agent makes your team better right now.</div>'}
+
+  ${availableSection(s)}
 
   <h2>Who to drop</h2>
   <p class="explain">Safest drop first. Each player is measured against the best free agent at his position, so a kicker you can replace off waivers counts as cheap even if he starts.</p>
@@ -404,6 +442,13 @@ async function init() {
   $('#view').addEventListener('click', (e) => {
     const link = e.target.closest('.plink');
     if (link) { showPlayer(+link.dataset.pid); return; }
+    const ap = e.target.closest('[data-apos], [data-asort]');
+    if (ap) {
+      if (ap.dataset.apos) { state.avail.pos = ap.dataset.apos; store.set('availPos', ap.dataset.apos); }
+      if (ap.dataset.asort) { state.avail.sort = ap.dataset.asort; store.set('availSort', ap.dataset.asort); }
+      const y = window.scrollY; render(); window.scrollTo(0, y);
+      return;
+    }
     const c = e.target.closest('.chip'); if (!c) return;
     const set = state.builder[c.dataset.side]; const id = +c.dataset.id;
     set.has(id) ? set.delete(id) : set.add(id);
