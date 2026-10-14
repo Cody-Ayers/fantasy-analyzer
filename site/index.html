@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cut">
+  <meta name="theme-color" content="#0d1117">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Lineup Lab</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="logo">LL</span>
+      <div>
+        <h1>Lineup Lab</h1>
+        <p id="updated" class="muted">Loading…</p>
+      </div>
+    </div>
+    <div id="leagues" class="seg" role="tablist" aria-label="League"></div>
+  </header>
+
+  <main id="view" aria-live="polite"></main>
+
+  <nav class="tabs" aria-label="Sections">
+    <button data-tab="team" class="on"><span class="ico">◎</span>My Team</button>
+    <button data-tab="waivers"><span class="ico">＋</span>Waivers</button>
+    <button data-tab="trades"><span class="ico">⇄</span>Trades</button>
+    <button data-tab="league"><span class="ico">▤</span>League</button>
+  </nav>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

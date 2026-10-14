@@ -1,0 +1,56 @@
+# GitHub Actions: a computer GitHub lends you for free that runs these steps.
+# It wakes up on the schedule below (or when you click "Run workflow"),
+# pulls fresh ESPN data, saves it to the repo, and publishes the site.
+
+name: Refresh leagues and publish
+
+on:
+  schedule:
+    # Times are UTC. 13:17 UTC is 6:17am Pacific. Daily, plus a Sunday
+    # pre-kickoff run (16:47 UTC = 9:47am PT) after inactives are announced.
+    - cron: '17 13 * * *'
+    - cron: '47 16 * * 0'
+  workflow_dispatch:        # adds a "Run workflow" button in the Actions tab
+  push:
+    branches: [main]        # republish whenever you change the code
+
+permissions:
+  contents: write           # to save the new data files
+  pages: write              # to publish the site
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Pull fresh data from ESPN
+        if: github.event_name != 'push'
+        env:
+          ESPN_S2: ${{ secrets.ESPN_S2 }}
+          SWID: ${{ secrets.SWID }}
+        run: node scripts/fetch.mjs
+
+      - name: Save the new data to the repo
+        if: github.event_name != 'push'
+        run: |
+          git config user.name "lineup-lab-bot"
+          git config user.email "lineup-lab-bot@users.noreply.github.com"
+          git add site/data
+          git diff --cached --quiet || git commit -m "Refresh league data"
+          git push
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - uses: actions/deploy-pages@v4
