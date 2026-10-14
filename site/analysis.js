@@ -436,3 +436,129 @@ export function playoffOdds(snap, sims = 5000) {
     ifLose: cond.loseNow[1] ? cond.loseNow[0] / cond.loseNow[1] : null,
   };
 }
+
+// ---------- player history (the player panel) ----------
+// hist = site/data/<league>-players.json: players[id] = [[week, pts, proj, snap%, stats], ...]
+
+const quantile = (sorted, q) => {
+  if (!sorted.length) return null;
+  const i = (sorted.length - 1) * q;
+  const lo = Math.floor(i), hi = Math.ceil(i);
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo);
+};
+
+// How many players at a position your league starts each week. FLEX spots are
+// split roughly the way leagues fill them: about 45% RB, 45% WR, 10% TE.
+function startersAt(snap, pos) {
+  const s = snap.league.slots, size = snap.league.size;
+  const flex = (s.FLEX || 0) * ({ RB: 0.45, WR: 0.45, TE: 0.1 }[pos] || 0);
+  return Math.round(size * ((s[pos] || 0) + flex));
+}
+
+// Each player's finish at his position for every past week (1 = top scorer).
+export function weeklyRanks(snap, hist) {
+  const pos = Object.fromEntries(snap.players.map((p) => [p.id, p.p]));
+  const byWeekPos = {};
+  for (const [id, rows] of Object.entries(hist.players)) {
+    for (const [w, pts] of rows) {
+      if (pts == null || !pos[id]) continue;
+      ((byWeekPos[w] ||= {})[pos[id]] ||= []).push([+id, pts]);
+    }
+  }
+  const rank = {};   // rank[id][week]
+  for (const [w, groups] of Object.entries(byWeekPos)) {
+    for (const list of Object.values(groups)) {
+      list.sort((a, b) => b[1] - a[1]).forEach(([id], i) => { (rank[id] ||= {})[w] = i + 1; });
+    }
+  }
+  return rank;
+}
+
+// Points each NFL defense gives up to each position per game, ranked
+// 1 (stingiest) to 32 (most generous). Built from every player in your league's pool.
+export function defenseVsPosition(snap, hist) {
+  const allowed = {};   // allowed[pos][defTeam] = { pts, games:Set }
+  for (const p of snap.players) {
+    const opps = snap.proTeams[p.t]?.opps;
+    if (!opps) continue;
+    for (const [w, pts] of hist.players[p.id] || []) {
+      const d = opps[w];
+      if (d == null || pts == null) continue;
+      const a = ((allowed[p.p] ||= {})[d] ||= { pts: 0, games: new Set() });
+      a.pts += pts; a.games.add(w);
+    }
+  }
+  const out = {};
+  for (const [pos, teams] of Object.entries(allowed)) {
+    const per = Object.entries(teams).map(([d, a]) => [+d, a.pts / a.games.size]).sort((a, b) => a[1] - b[1]);
+    out[pos] = {};
+    per.forEach(([d, v], i) => { out[pos][d] = { perGame: v, rank: i + 1, of: per.length }; });
+  }
+  return out;
+}
+
+// A week with no points, no stats, no snaps and no projection means he didn't
+// play (injured, inactive or before he joined a team), not a 0-point game.
+const didNotPlay = ([, pts, proj, snp, st]) =>
+  !pts && snp == null && !Object.keys(st || {}).length && !proj;
+
+export function playerReport(snap, hist, p, cache = {}) {
+  const all = (hist.players[p.id] || []).filter((r) => r[1] != null);
+  const missed = all.filter(didNotPlay).map((r) => r[0]);
+  const rows = all.filter((r) => !didNotPlay(r));
+  const ranks = (cache.ranks ??= weeklyRanks(snap, hist))[p.id] || {};
+  const dvp = (cache.dvp ??= defenseVsPosition(snap, hist))[p.p] || {};
+  const pts = rows.map((r) => r[1]);
+  const sorted = [...pts].sort((a, b) => a - b);
+  const startLine = startersAt(snap, p.p);
+  const boomLine = ['QB', 'TE', 'K', 'DST'].includes(p.p) ? Math.max(3, Math.round(snap.league.size / 2)) : snap.league.size;
+
+  const weeks = rows.map(([w, pt, proj, snp, st]) => ({
+    w, pts: pt, proj, snap: snp, stats: st, rank: ranks[w] ?? null,
+    opp: snap.proTeams[p.t]?.opps?.[w] ?? null,
+  }));
+  const games = weeks.length;
+  const mean = games ? pts.reduce((a, b) => a + b, 0) / games : 0;
+  const sd = games > 1 ? Math.sqrt(pts.reduce((a, b) => a + (b - mean) ** 2, 0) / (games - 1)) : 0;
+
+  // Snap share trend: last two games against the ones before.
+  const snaps = weeks.filter((x) => x.snap != null);
+  let snapTrend = null;
+  if (snaps.length >= 3) {
+    const recent = snaps.slice(-2).reduce((a, x) => a + x.snap, 0) / 2;
+    const before = snaps.slice(0, -2).reduce((a, x) => a + x.snap, 0) / (snaps.length - 2);
+    const diff = recent - before;
+    snapTrend = { recent, before, diff, dir: diff >= 8 ? 'up' : diff <= -8 ? 'down' : 'flat' };
+  }
+
+  // Usage: the opportunities that drive his points.
+  const usage = weeks.map((x) => {
+    const s = x.stats || {};
+    if (p.p === 'QB') return { w: x.w, n: s.py || 0, label: 'pass yds' };
+    if (p.p === 'RB') return { w: x.w, n: (s.ca || 0) + (s.tg || 0), label: 'touches + targets' };
+    if (p.p === 'WR' || p.p === 'TE') return { w: x.w, n: s.tg || 0, label: 'targets' };
+    return null;
+  }).filter(Boolean);
+
+  // Next four weeks: opponent and how generous that defense is to his position.
+  const upcoming = [];
+  for (let w = snap.week; w < snap.week + 4 && w <= FINAL_WEEK; w++) {
+    const opp = snap.proTeams[p.t]?.opps?.[w];
+    const d = opp != null ? dvp[opp] : null;
+    upcoming.push({ w, opp, bye: opp == null, dvp: d,
+      ease: d ? (d.rank > d.of * 2 / 3 ? 'easy' : d.rank <= d.of / 3 ? 'tough' : 'average') : null });
+  }
+
+  return {
+    weeks, games, mean, sd, missed,
+    floor: quantile(sorted, 0.25), median: quantile(sorted, 0.5), ceiling: quantile(sorted, 0.75),
+    low: sorted[0] ?? null, high: sorted.at(-1) ?? null,
+    boomLine, startLine,
+    booms: weeks.filter((x) => x.rank && x.rank <= boomLine).length,
+    startable: weeks.filter((x) => x.rank && x.rank <= startLine).length,
+    busts: weeks.filter((x) => !x.rank || x.rank > startLine).length,
+    beatProj: weeks.filter((x) => x.proj != null && x.pts > x.proj).length,
+    withProj: weeks.filter((x) => x.proj != null).length,
+    snapTrend, usage, upcoming,
+  };
+}

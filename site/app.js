@@ -1,6 +1,7 @@
 // The page: load a league snapshot, run the analysis, draw the active tab.
 import * as A from './analysis.js';
 import * as R from './refresh.js';
+import { openPlayer, loadHistory } from './player.js';
 
 const state = { leagues: [], snap: null, tab: 'team', cache: {}, leagueId: null };
 const $ = (sel) => document.querySelector(sel);
@@ -34,6 +35,8 @@ function flags(p, extra = '') {
   if (p.sl && p.sl <= 25) h += `<span class="flag HOT" title="#${p.sl} most-added on Sleeper in the last 48 hours">HOT</span>`;
   return h + extra;
 }
+// Every player name is a button that opens his panel (see player.js).
+const nameBtn = (p) => `<button type="button" class="plink" data-pid="${p.id}">${esc(p.n)}</button>`;
 const pos = (p) => `<span class="pos ${p.p}">${p.p === 'DST' ? 'D/ST' : p.p}</span>`;
 function meta(p, bits) {
   return `<div class="meta">${pos(p)}${bits.filter(Boolean).map((b) => `<span>${b}</span>`).join('')}</div>`;
@@ -44,7 +47,7 @@ function playerRow(slot, p, value, opts = {}) {
   if (!p) return `<li class="row"><span class="slot">${slot}</span><div class="pname dim">Nobody available</div><div class="pts">0.0</div></li>`;
   return `<li class="row ${opts.change ? 'change' : ''}">
     <span class="slot">${slot}</span>
-    <div><div class="pname">${esc(p.n)} ${flags(p, opts.change ? '<span class="flag START">START</span>' : '')}</div>
+    <div><div class="pname">${nameBtn(p)} ${flags(p, opts.change ? '<span class="flag START">START</span>' : '')}</div>
       ${meta(p, [game(p), `${f1(p.avg)} avg`, p.er ? `${p.p === 'DST' ? 'D/ST' : p.p}${p.er} by experts` : ''])}</div>
     <div class="pts ${opts.up ? 'up' : ''}">${f1(value)}<small>${opts.label || 'proj'}</small></div></li>`;
 }
@@ -132,7 +135,7 @@ function renderWaivers() {
   const cards = picks.map((x) => `
     <div class="move">
       <div class="move-head">
-        <div><div class="pname">${esc(x.p.n)} ${flags(x.p)}</div>
+        <div><div class="pname">${nameBtn(x.p)} ${flags(x.p)}</div>
           ${meta(x.p, [game(x.p), `${f1(x.p.avg)} avg`, `${Math.round(x.p.own)}% owned`])}</div>
         <div class="gain">${sign(x.perWeek)}<small>per week</small></div>
       </div>
@@ -153,7 +156,7 @@ function renderWaivers() {
       : `Costs ${f1(Math.max(0, d.cost))} a week${d.replacement ? ` vs ${esc(d.replacement.n)}` : ''}`;
     return `<li class="row drow">
       <span class="verdict ${d.verdict}">${VERDICT[d.verdict]}</span>
-      <div><div class="pname">${esc(d.p.n)} ${flags(d.p)}</div>
+      <div><div class="pname">${nameBtn(d.p)} ${flags(d.p)}</div>
         ${meta(d.p, [sub, ...d.signals.map(esc)])}</div>
       <div class="pts">${f1(A.rosPPG(d.p))}<small>per game</small></div></li>`;
   }).join('');
@@ -182,7 +185,7 @@ function renderWaivers() {
 
 // ---------- Trades ----------
 function tradeCard(x) {
-  const pl = (p) => `<div class="pl">${esc(p.n)}${meta(p, [`${f1(A.rosPPG(p))} per game`])}</div>`;
+  const pl = (p) => `<div class="pl">${nameBtn(p)}${meta(p, [`${f1(A.rosPPG(p))} per game`])}</div>`;
   return `<div class="move">
     <div class="deal-team"><b>${esc(x.team.name)}</b><span class="dim">${record(x.team)}</span></div>
     <div class="deal">
@@ -325,6 +328,32 @@ async function refresh() {
   }
 }
 
+// ---------- player panel ----------
+function ownerName(p) {
+  if (p.tm === state.snap.me) return 'Your team';
+  if (p.tm) return state.snap.teams.find((t) => t.id === p.tm)?.name || '';
+  return p.fa === 'W' ? 'On waivers' : 'Free agent';
+}
+function showPlayer(id) {
+  const s = state.snap;
+  const p = s.players.find((x) => x.id === id);
+  if (!p) return;
+  // What he means to your roster, plus the expert and crowd signals.
+  let extras = '';
+  if (p.tm === s.me) {
+    const d = (state.cache.drops ??= A.dropCosts(s)).find((x) => x.p.id === p.id);
+    if (d) {
+      extras += `<section class="ps"><h3>On your roster</h3><p class="ps-sum">${d.verdict === 'swap'
+        ? `A free agent is better: swap him for <b>${esc(d.replacement.n)}</b> for ${sign(-d.cost)} a week.`
+        : `Dropping him would cost about <b>${f1(Math.max(0, d.cost))}</b> points a week${d.replacement ? `, compared with picking up ${esc(d.replacement.n)}` : ''}.`}</p></section>`;
+    }
+  }
+  const sig = signals(p) + take(p);
+  if (sig) extras += `<section class="ps"><h3>What others say</h3>${sig}</section>`;
+  state.reportCache ||= {};
+  openPlayer(p, { snap: s, leagueId: state.leagueId, dialog: $('#player'), flags, game, ownerName, extras, reportCache: state.reportCache });
+}
+
 // ---------- wiring ----------
 const RENDER = { team: renderTeam, waivers: renderWaivers, trades: renderTrades, league: renderLeague };
 
@@ -348,6 +377,8 @@ async function loadLeague(id, fresh = false) {
   state.snap = await fetch(`data/${id}.json${bust(fresh)}`, { cache: 'no-cache' }).then((r) => r.json());
   state.leagueId = id;
   state.cache = {};
+  state.reportCache = {};
+  if (fresh) loadHistory(id, true);
   state.builder = null;
   store.set('league', id);
   document.querySelectorAll('#leagues button').forEach((b) => b.classList.toggle('on', b.dataset.id === String(id)));
@@ -371,6 +402,8 @@ async function init() {
     if (e.target.id === 'tradeTeam') { state.builder = { team: +e.target.value, give: new Set(), get: new Set() }; render(); }
   });
   $('#view').addEventListener('click', (e) => {
+    const link = e.target.closest('.plink');
+    if (link) { showPlayer(+link.dataset.pid); return; }
     const c = e.target.closest('.chip'); if (!c) return;
     const set = state.builder[c.dataset.side]; const id = +c.dataset.id;
     set.has(id) ? set.delete(id) : set.add(id);

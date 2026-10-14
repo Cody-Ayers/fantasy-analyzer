@@ -24,6 +24,8 @@ ESPN API ──► scripts/fetch.mjs ──► site/data/*.json ──► site/ 
 | `scripts/fetch.mjs` | Runs `espn.js` for every league and writes the snapshot files |
 | `site/analysis.js` | The math: lineups, waivers, trades, standings, playoff simulation |
 | `site/app.js` | Draws the page |
+| `scripts/history.js` | Week-by-week points, projections and stats (ESPN) plus snap counts (Sleeper) for the player panel |
+| `site/player.js` | The player panel that opens when you tap a name |
 | `site/refresh.js` | The Refresh button: starts the workflow through GitHub's API and waits for it |
 | `.github/workflows/refresh.yml` | Tells GitHub to refresh the data and republish the site on a schedule |
 
@@ -33,6 +35,10 @@ ESPN API ──► scripts/fetch.mjs ──► site/data/*.json ──► site/ 
 - **Playoff odds** play out the remaining schedule 5,000 times with random scores around each team's projection. Ties go to total points, like your leagues.
 - **All-play record**: your record if you'd played every team every week. **Luck** = actual wins minus what all-play says you earned.
 - **Who to drop** uses *value over replacement*: each of your players is compared with the best free agent at his position, so an easily replaced kicker counts as cheap. A negative cost means a free agent is simply better ("Upgrade available").
+- **Player panel** (tap any name):
+  - *Snap share*: his offensive snaps ÷ his team's, from Sleeper. "Rising" or "falling" means his last 2 games moved 8+ points from his earlier average.
+  - *Consistency*: floor and ceiling are his 25th and 75th percentile weeks. A *boom* week is a top-N finish at his position, where N is your league size (half that for QB, TE, K and D/ST). *Startable* means inside the number of players at his position your league starts each week (FLEX split 45% RB, 45% WR, 10% TE). Weeks he didn't play don't count.
+  - *Next 4 weeks*: points each defense has allowed per game to his position, from every player in your league's pool, split into thirds: tough, average, easy.
 - **Outside signals** shown next to the numbers: ESPN's expert consensus rank for the week, ESPN's analyst write-up, ESPN ownership trend, and Sleeper's most-added list for the last 48 hours (HOT tag = top 25).
 
 ## Run it on your Mac

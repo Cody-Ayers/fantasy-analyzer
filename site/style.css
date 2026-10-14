@@ -292,3 +292,69 @@ select {
   .tabs svg { width: 18px; height: 18px; }
   .toast { bottom: 24px; }
 }
+
+/* ---------- player names are buttons ---------- */
+.plink {
+  border: 0; background: none; padding: 0; margin: 0; cursor: pointer; text-align: left;
+  font: inherit; font-weight: 600; color: inherit;
+  text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--chalk) 25%, transparent);
+  text-underline-offset: 3px; text-decoration-thickness: 1px;
+}
+.plink:hover { text-decoration-color: var(--you); }
+
+/* ---------- player panel ---------- */
+.pp-sheet {
+  width: min(600px, 100vw); max-width: 100vw; max-height: 92vh; padding: 0;
+  margin: auto auto 0; border-radius: 20px 20px 0 0; border-bottom: 0;
+}
+@media (min-width: 760px) { .pp-sheet { margin: auto; border-radius: 20px; border-bottom: 1px solid var(--line); } }
+.pp { padding: 18px 16px calc(20px + env(safe-area-inset-bottom)); }
+.pp-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; }
+.pp-head h2 { margin: 0 0 4px; font: 700 28px/1.05 var(--cond); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.close { border: 0; background: var(--turf-3); width: 36px; height: 36px; border-radius: 50%; cursor: pointer; font-size: 15px; color: var(--dim); }
+.pp-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border-radius: 14px; overflow: hidden; margin: 14px 0 4px; }
+.pp-keys > div { background: var(--turf-3); padding: 10px 12px; }
+.pp-keys .n { display: block; font-size: 28px; line-height: 1; font-weight: 700; }
+.pp-keys span:last-child { font-size: 13px; color: var(--dim); }
+
+.ps { padding: 18px 0 4px; border-top: 1px solid var(--line); margin-top: 14px; }
+.ps h3 { margin: 0 0 4px; font: 600 21px/1.1 var(--cond); }
+.ps-sum { margin: 0 0 10px; font-size: 15px; max-width: 62ch; }
+.ps-sum .dim { display: block; font-size: 13px; margin-top: 2px; }
+.ps-note { font-size: 13px; color: var(--dim); margin: 8px 0 10px; }
+.range { display: grid; grid-template-columns: 1fr 1.2fr 1fr; text-align: center; align-items: end; gap: 6px; margin-top: 8px; }
+.range .n { display: block; font-size: 30px; line-height: 1; font-weight: 700; }
+.range .mid .n { font-size: 44px; color: var(--you); }
+.range span:last-child { font-size: 13px; color: var(--dim); }
+.rates { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; font-size: 15px; }
+.rates b { font: 700 18px/1 var(--cond); }
+
+.chart { width: 100%; height: auto; display: block; margin-top: 4px; overflow: visible; }
+.chart .hit { fill: transparent; }
+.chart .b-pts { fill: var(--you); }
+.chart .b-snap { fill: var(--them); }
+.chart .b-use { fill: var(--pos-rb); }
+.chart .tick { stroke: var(--chalk); stroke-width: 2; stroke-linecap: round; }
+.chart .wk, .chart .na { font: 600 11px var(--cond); fill: var(--dim); text-anchor: middle; }
+.chart .val { font: 600 12px var(--cond); fill: var(--chalk); text-anchor: middle; }
+.chart .bar { cursor: pointer; outline: none; }
+.chart .bar.on .hit, .chart .bar:focus-visible .hit { fill: rgba(237, 241, 232, .06); }
+.chart .bar.on .wk { fill: var(--chalk); }
+.readout { font-size: 14px; color: var(--dim); margin: 6px 0 0; min-height: 1.4em; }
+
+.wk-tbl { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 15px; }
+.wk-tbl th { font: 600 14px/1 var(--cond); color: var(--dim); text-align: right; padding: 0 4px 8px; }
+.wk-tbl td { text-align: right; padding: 7px 4px; font: 500 17px/1.1 var(--cond); border-top: 1px solid var(--line); }
+.wk-tbl th:nth-child(-n+2), .wk-tbl td:nth-child(-n+2) { text-align: left; }
+.wk-tbl tr.stat td { border-top: 0; padding-top: 0; font: 400 13px/1.3 var(--body); color: var(--dim); text-align: left; }
+.wk-tbl tr.dnp td { color: var(--dim); }
+.wk-tbl tr.dnp td:last-child { text-align: left; font: 400 14px var(--body); }
+
+.sched { list-style: none; padding: 0; margin: 0; }
+.sched li { display: grid; grid-template-columns: 40px 60px 1fr; gap: 8px; align-items: baseline; padding: 8px 0; border-top: 1px solid var(--line); font-size: 15px; }
+.sched li:first-child { border-top: 0; }
+.sched .wkn { font: 600 15px var(--cond); color: var(--dim); }
+.sched li > span:nth-child(2) { font: 600 17px var(--cond); }
+.ease { text-align: right; font-weight: 600; }
+.ease.easy { color: var(--good); } .ease.tough { color: var(--bad); } .ease.average { color: var(--chalk); }
+.ease .dim { font-weight: 400; font-size: 13px; margin-left: 4px; }
