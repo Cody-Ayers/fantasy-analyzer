@@ -35,6 +35,18 @@ function flags(p, extra = '') {
   if (p.sl && p.sl <= 25) h += `<span class="flag HOT" title="#${p.sl} most-added on Sleeper in the last 48 hours">HOT</span>`;
   return h + extra;
 }
+// ---------- "Open in ESPN" shortcuts ----------
+// The app only reads ESPN, so every move is made in ESPN. These links jump
+// straight to the right ESPN page (the ESPN Fantasy app opens them on a phone).
+const ESPN = 'https://fantasy.espn.com/football';
+const espnUrl = {
+  myTeam: () => `${ESPN}/team?leagueId=${state.snap.league.id}&teamId=${state.snap.me}&seasonId=${state.snap.season}`,
+  team: (teamId) => `${ESPN}/team?leagueId=${state.snap.league.id}&teamId=${teamId}&seasonId=${state.snap.season}`,
+  players: () => `${ESPN}/players/add?leagueId=${state.snap.league.id}&fromTeamId=${state.snap.me}&seasonId=${state.snap.season}`,
+  matchup: () => `${ESPN}/boxscore?leagueId=${state.snap.league.id}&matchupPeriodId=${state.snap.week}&scoringPeriodId=${state.snap.week}&seasonId=${state.snap.season}&teamId=${state.snap.me}&view=scoringperiod`,
+};
+const espnBtn = (url, label) => `<a class="espn-btn" href="${url}" target="_blank" rel="noopener">${label}</a>`;
+
 // Every player name is a button that opens his panel (see player.js).
 const nameBtn = (p) => `<button type="button" class="plink" data-pid="${p.id}">${esc(p.n)}</button>`;
 const pos = (p) => `<span class="pos ${p.p}">${p.p === 'DST' ? 'D/ST' : p.p}</span>`;
@@ -92,6 +104,7 @@ function renderTeam() {
     ${field(win)}
     <div class="fieldnote"><span><b>${pct(win)}</b> to win</span><span>Ball ${yardLine(win)}</span></div>
     ${fix}
+    <div class="espn-row">${espnBtn(espnUrl.myTeam(), 'Set lineup in ESPN')}${espnBtn(espnUrl.matchup(), 'Matchup in ESPN')}</div>
   </div>
 
   ${tw.alerts.length ? `<h2>Before kickoff</h2><ul class="alerts">${tw.alerts.map((a) => `<li class="lvl-${a.level}">${esc(a.text)}</li>`).join('')}</ul>` : ''}
@@ -132,7 +145,7 @@ function irSection(s) {
     if (rest.length) notes.push(`<li class="lvl-warn">${esc(list(rest.map((p) => p.n)))} ${rest.length > 1 ? 'are' : 'is'} IR-eligible too, but your IR spots are full.</li>`);
   }
   return `
-  <h2>Injured reserve</h2>
+  <h2 class="h-espn">Injured reserve ${espnBtn(espnUrl.myTeam(), 'Manage in ESPN')}</h2>
   <p class="explain">${ir.inIR.length} of ${ir.slots} spots used. Players on IR don't count against your roster, but only players listed out, on IR or suspended can stay there.</p>
   ${notes.length ? `<ul class="alerts" style="margin-bottom:10px">${notes.join('')}</ul>` : ''}
   <div class="sheetbox"><ul class="rows">${rows}${empty}</ul></div>`;
@@ -184,7 +197,7 @@ function availableSection(s) {
   }).join('');
 
   return `
-  <h2>Available players</h2>
+  <h2 class="h-espn">Available players ${espnBtn(espnUrl.players(), 'ESPN players')}</h2>
   <p class="explain">The top 15 free agents and waiver players at each position. <b>UPGRADE</b> means he projects better the rest of the season than your weakest starter there${weakest ? ` (${esc(weakest.p.n)}, ${f1(weakest.v)} a game)` : ''}.</p>
   <div class="avail-controls">
     <div class="seg pos-seg" role="group" aria-label="Position">${AV_POS.map(posBtn).join('')}</div>
@@ -210,7 +223,8 @@ function renderWaivers() {
         : 'No drop needed. He goes in your open roster spot.'}</div>
       ${signals(x.p)}
       ${take(x.p)}
-      <span class="status">${x.p.fa === 'W' ? 'On waivers, so you need to put in a claim.' : 'Free agent, so you can add him now.'}</span>
+      <div class="espn-row"><span class="status">${x.p.fa === 'W' ? 'On waivers, so you need to put in a claim.' : 'Free agent, so you can add him now.'}</span>
+        ${espnBtn(espnUrl.players(), x.p.fa === 'W' ? 'Claim in ESPN' : 'Add in ESPN')}</div>
     </div>`).join('');
 
   const VERDICT = { swap: 'Upgrade', safe: 'Safe drop', depth: 'Small loss', keep: 'Keep' };
@@ -246,7 +260,7 @@ function renderWaivers() {
   <p class="explain">Safest drop first. Each player is measured against the best free agent at his position, so a kicker you can replace off waivers counts as cheap even if he starts.</p>
   <div class="sheetbox"><ul class="rows">${dropRows}</ul></div>
 
-  <h2>Stream a defense</h2>${stream('DST')}
+  <h2 class="h-espn">Stream a defense ${espnBtn(espnUrl.players(), 'ESPN players')}</h2>${stream('DST')}
   <h2>Stream a kicker</h2>${stream('K')}`;
 }
 
@@ -264,7 +278,8 @@ function tradeCard(x) {
       <span>Them <b class="${x.theirGain >= 0 ? 'good' : 'bad'}">${sign(x.theirGain)}</b></span>
       <span>This week <b>${sign(x.myWeek)}</b></span>
     </div>
-    ${x.rosterChange > 0 ? '<span class="status">You\'d need to drop a bench player to fit them.</span>' : ''}
+    <div class="espn-row">${x.rosterChange > 0 ? '<span class="status">You\'d need to drop a bench player to fit them.</span>' : '<span></span>'}
+      ${espnBtn(espnUrl.team(x.team.id), 'Propose in ESPN')}</div>
   </div>`;
 }
 
@@ -307,6 +322,7 @@ function renderTrades() {
       <div><h3 class="get-h">You get</h3>${theirs.map((p) => chip(p, b.get, 'get')).join('')}</div>
     </div>
     ${result}
+    <div class="espn-row"><span class="status">ESPN's Propose Trade button is on their team page.</span>${espnBtn(espnUrl.team(b.team), 'Their team in ESPN')}</div>
   </div>`;
 }
 

@@ -168,6 +168,7 @@ export async function openPlayer(p, ctx) {
       <div><span class="n">${f1(p.avg)}</span><span>Season avg</span></div>
       <div><span class="n">${f1(A.rosPPG(p))}</span><span>Rest of season</span></div>
     </div>
+    ${p.id > 0 ? `<div class="espn-row" style="margin-top:10px"><span></span><a class="espn-btn" href="https://www.espn.com/nfl/player/_/id/${p.id}" target="_blank" rel="noopener">News and stats on ESPN</a></div>` : ''}
     <div class="pp-body"><p class="dim" style="padding:12px 0">Loading his weekly history</p></div>
   </div>`;
   dialog.querySelector('.close').onclick = () => dialog.close();

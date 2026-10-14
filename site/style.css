@@ -370,3 +370,21 @@ select {
 .pts small.sub { margin-top: 4px; font-size: 11px; }
 
 .row.ir-bad .slot { color: var(--bad); }
+
+/* ---------- Open in ESPN shortcuts ---------- */
+.espn-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin-top: 12px; }
+.espn-row .status { margin-top: 0; flex: 1 1 160px; }
+.espn-btn {
+  display: inline-flex; align-items: center; gap: 6px; flex: none;
+  padding: 7px 12px; border-radius: 99px; border: 1px solid var(--line); background: var(--turf-3);
+  font: 600 14px/1 var(--body); color: var(--chalk); text-decoration: none; white-space: nowrap;
+}
+.espn-btn::after {   /* small "opens elsewhere" arrow */
+  content: ''; width: 7px; height: 7px; border-top: 1.6px solid var(--you); border-right: 1.6px solid var(--you); transform: rotate(45deg) translate(-1px, 1px);
+}
+.espn-btn:active { background: var(--line); }
+.matchup .espn-row { justify-content: flex-start; }
+h2.h-espn { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+h2.h-espn .espn-btn { font-size: 13px; padding: 6px 10px; }
+.matchup .espn-row { flex-wrap: nowrap; }
+.matchup .espn-btn { font-size: 13px; padding: 7px 10px; }
