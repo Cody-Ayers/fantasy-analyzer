@@ -61,6 +61,19 @@ function slimPlayer(p, week, season, extra, opts = {}) {
   };
 }
 
+// Matching players between ESPN and Sleeper: same name (letters only, no Jr/Sr/II)
+// on the same NFL team. Defenses match by team.
+const sleeperKey = (name, team) =>
+  `${String(name).toLowerCase().replace(/[^a-z]/g, '').replace(/(jr|sr|ii|iii|iv|v)$/, '')}|${team}`;
+const TEAM_FIX = { WSH: 'WAS' };   // Sleeper uses a few different abbreviations
+function espnKey(snap, p) {
+  const team = snap.proTeams[p.t] ? snap.proTeams[p.t].ab : '';
+  const st = TEAM_FIX[team] || team;
+  return p.p === 'DST' ? `dst|${st}` : sleeperKey(p.n, st);
+}
+const sleeperPlayerKey = (sp, id) => (sp.position === 'DEF'
+  ? `dst|${sp.team || id}` : sleeperKey(sp.full_name || `${sp.first_name} ${sp.last_name}`, sp.team));
+
 // Sleeper (another fantasy app) publishes its most-added players of the last
 // 48 hours: a crowd signal for breakouts. Free, no login needed.
 // Adds `sl` to matching players: their rank on that list (1 = most added).
@@ -68,21 +81,15 @@ async function addSleeperTrends(snap, getPublicJSON) {
   try {
     const trending = await getPublicJSON('https://api.sleeper.app/v1/players/nfl/trending/add?lookback_hours=48&limit=200');
     const all = await getPublicJSON('https://api.sleeper.app/v1/players/nfl');
-    const key = (name, team) => `${String(name).toLowerCase().replace(/[^a-z]/g, '').replace(/(jr|sr|ii|iii|iv)$/, '')}|${team}`;
     // Store each player's spot on the list: 1 = most-added player in the last 48 hours.
     const counts = {};
     trending.forEach((t, i) => {
       const sp = all[t.player_id];
       if (!sp) return;
-      if (sp.position === 'DEF') counts[`dst|${sp.team || t.player_id}`] = i + 1;
-      else counts[key(sp.full_name || `${sp.first_name} ${sp.last_name}`, sp.team)] = i + 1;
+      counts[sleeperPlayerKey(sp, t.player_id)] = i + 1;
     });
-    // Sleeper uses a few different team abbreviations than ESPN.
-    const fix = { WSH: 'WAS' };
     for (const p of snap.players) {
-      const team = snap.proTeams[p.t] ? snap.proTeams[p.t].ab : '';
-      const st = fix[team] || team;
-      const c = p.p === 'DST' ? counts[`dst|${st}`] : counts[key(p.n, st)];
+      const c = counts[espnKey(snap, p)];
       if (c) p.sl = c;
     }
     snap.sleeperAt = new Date().toISOString();
@@ -170,7 +177,13 @@ async function buildSnapshot(getJSON, leagueId, season, swid) {
   for (const t of pro.settings.proTeams) {
     const g = ((t.proGamesByScoringPeriod || {})[week] || [])[0];
     const opp = g ? (g.homeProTeamId === t.id ? g.awayProTeamId : g.homeProTeamId) : null;
-    proTeams[t.id] = { ab: t.abbrev, bye: t.byeWeek, opp, home: g ? g.homeProTeamId === t.id : null };
+    // Opponent for every week of the season (index = week; null on the bye).
+    const opps = [null];
+    for (let w = 1; w <= 18; w++) {
+      const gw = ((t.proGamesByScoringPeriod || {})[w] || [])[0];
+      opps.push(gw ? (gw.homeProTeamId === t.id ? gw.awayProTeamId : gw.homeProTeamId) : null);
+    }
+    proTeams[t.id] = { ab: t.abbrev, bye: t.byeWeek, opp, home: g ? g.homeProTeamId === t.id : null, opps };
   }
 
   const regWeeks = s.scheduleSettings.matchupPeriodCount;
@@ -192,4 +205,4 @@ async function buildSnapshot(getJSON, leagueId, season, swid) {
   };
 }
 
-if (typeof module !== 'undefined') module.exports = { buildSnapshot, addSleeperTrends };
+if (typeof module !== 'undefined') module.exports = { buildSnapshot, addSleeperTrends, espnKey, sleeperPlayerKey };

@@ -11,6 +11,7 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const { buildSnapshot, addSleeperTrends } = require('./espn.js');
+const { buildHistory } = require('./history.js');
 const config = require('../leagues.json');
 
 const { ESPN_S2, SWID } = process.env;
@@ -48,6 +49,15 @@ for (const id of config.leagues) {
   await addSleeperTrends(snap, getPublicJSON);
   if (!snap.me) console.warn(`League ${id}: couldn't find your team. Is SWID right?`);
   writeFileSync(`site/data/${id}.json`, JSON.stringify(snap));
+  // Week-by-week history for the player panel. Optional: a failure here
+  // shouldn't stop the main refresh.
+  try {
+    const hist = await buildHistory(getJSON, getPublicJSON, snap);
+    writeFileSync(`site/data/${id}-players.json`, JSON.stringify(hist));
+    console.log(`  history: ${Object.keys(hist.players).length} players, weeks ${hist.weeks.join(',')}`);
+  } catch (e) {
+    console.warn(`  history skipped: ${e.message}`);
+  }
   index.push({ id, name: snap.league.name, week: snap.week, fetchedAt: snap.fetchedAt });
   console.log(`✓ ${snap.league.name}: week ${snap.week}, ${snap.players.length} players`);
 }
