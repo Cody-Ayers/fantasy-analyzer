@@ -24,6 +24,7 @@ ESPN API ──► scripts/fetch.mjs ──► site/data/*.json ──► site/ 
 | `scripts/fetch.mjs` | Runs `espn.js` for every league and writes the snapshot files |
 | `site/analysis.js` | The math: lineups, waivers, trades, standings, playoff simulation |
 | `site/app.js` | Draws the page |
+| `site/refresh.js` | The Refresh button: starts the workflow through GitHub's API and waits for it |
 | `.github/workflows/refresh.yml` | Tells GitHub to refresh the data and republish the site on a schedule |
 
 ### The math, briefly
@@ -76,7 +77,17 @@ Repo → **Settings → Pages → Source: GitHub Actions**.
 Repo → **Actions → Refresh leagues and publish → Run workflow**. In about a minute your site is live at
 `https://YOUR-USERNAME.github.io/fantasy-analyzer/`. On your iPhone, open it in Safari and choose **Share → Add to Home Screen**.
 
-After that it refreshes on its own every morning, plus Sunday before kickoff. You can also hit **Run workflow** anytime, for example right after waivers clear.
+After that it refreshes on its own every morning, plus Sunday before kickoff.
+
+### The Refresh button
+The **Refresh** button in the app starts the same workflow from your phone. A public site can't keep a secret, so the first time you tap it, it asks for a GitHub token:
+
+1. Go to [github.com/settings/personal-access-tokens/new](https://github.com/settings/personal-access-tokens/new).
+2. **Repository access:** Only select repositories → `fantasy-analyzer`.
+3. **Permissions → Repository permissions → Actions:** Read and write. Nothing else.
+4. Generate, copy, and paste it into the app.
+
+The token is saved only in that browser (`localStorage`) and only sent to `api.github.com` (see `site/refresh.js`). Do it once per device. If the token expires or is deleted, the app asks again.
 
 > **Privacy:** on a free GitHub plan, the repo and the site are public. Anyone with the link could see your league's rosters and standings, but never your cookies, which stay in Secrets.
 

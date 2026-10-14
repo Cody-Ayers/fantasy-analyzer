@@ -2,23 +2,32 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cut">
-  <meta name="theme-color" content="#0d1117">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0c1712">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Lineup Lab">
   <title>Lineup Lab</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2314281d'/%3E%3Cpath d='M20 14v26h24' stroke='%23f2c14e' stroke-width='7' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header class="top">
-    <div class="brand">
-      <span class="logo">LL</span>
-      <div>
-        <h1>Lineup Lab</h1>
-        <p id="updated" class="muted">Loading…</p>
+    <div class="bar-top">
+      <div class="brand">
+        <svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><path d="M20 14v26h24" /></svg>
+        <div>
+          <h1>Lineup Lab</h1>
+          <p id="updated">Loading</p>
+        </div>
       </div>
+      <button id="refresh" class="refresh" type="button" aria-label="Refresh data from ESPN">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.34-5.66M20 4v5h-5" /></svg>
+        <span>Refresh</span>
+      </button>
     </div>
     <div id="leagues" class="seg" role="tablist" aria-label="League"></div>
   </header>
@@ -26,11 +35,36 @@
   <main id="view" aria-live="polite"></main>
 
   <nav class="tabs" aria-label="Sections">
-    <button data-tab="team" class="on"><span class="ico">◎</span>My Team</button>
-    <button data-tab="waivers"><span class="ico">＋</span>Waivers</button>
-    <button data-tab="trades"><span class="ico">⇄</span>Trades</button>
-    <button data-tab="league"><span class="ico">▤</span>League</button>
+    <button data-tab="team" class="on">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c1-4 4-6 7-6s6 2 7 6"/></svg>My team</button>
+    <button data-tab="waivers">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Waivers</button>
+    <button data-tab="trades">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg>Trades</button>
+    <button data-tab="league">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V10M12 20V4M19 20v-7"/></svg>League</button>
   </nav>
+
+  <dialog id="setup" class="sheet">
+    <form method="dialog">
+      <h2>Connect the refresh button</h2>
+      <p>The button asks GitHub to pull fresh ESPN data, which takes about a minute. It needs a GitHub token that's only allowed to run this one workflow. You set it up once per device.</p>
+      <ol>
+        <li>Open <a id="tokenLink" target="_blank" rel="noopener">GitHub's new token page</a>.</li>
+        <li>Name it <i>Lineup Lab refresh</i>. Under <b>Repository access</b>, pick <b>Only select repositories</b> and choose <b id="repoName">this repo</b>.</li>
+        <li>Under <b>Permissions → Repository permissions</b>, set <b>Actions</b> to <b>Read and write</b>. Leave everything else alone.</li>
+        <li>Click <b>Generate token</b>, copy it, and paste it here.</li>
+      </ol>
+      <label for="tokenInput">Token</label>
+      <input id="tokenInput" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…">
+      <p class="fine">It's saved only in this browser and only sent to GitHub. Anyone using this device could use it, so skip this on a shared computer.</p>
+      <div class="sheet-actions">
+        <a id="manualRun" class="ghost" target="_blank" rel="noopener">Run it on GitHub instead</a>
+        <button value="cancel" class="ghost">Cancel</button>
+        <button id="saveToken" value="save" class="primary">Save and refresh</button>
+      </div>
+    </form>
+  </dialog>
 
   <script type="module" src="app.js"></script>
 </body>
