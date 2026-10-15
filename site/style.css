@@ -438,3 +438,18 @@ h2 .flag { font-size: 13px; vertical-align: middle; margin-left: 6px; }
 .stale b { color: var(--warn); }
 .stale p { margin: 4px 0 0; font-size: 14px; color: var(--dim); }
 .stale a { color: var(--chalk); }
+
+/* ---------- opponent preview, playoffs, waiver priority ---------- */
+details.opp { padding: 12px 14px; }
+details.opp summary { cursor: pointer; list-style: none; font-size: 16px; }
+details.opp summary::-webkit-details-marker { display: none; }
+details.opp summary::after { content: 'Show lineup'; float: right; font-size: 13px; color: var(--you); font-weight: 600; }
+details.opp[open] summary::after { content: 'Hide'; }
+.po-tbl td.ease { text-align: center; font: 600 15px var(--cond); }
+.po-tbl th:nth-child(n+3) { text-align: center; }
+.po-tbl td.ease.easy { color: var(--good); } .po-tbl td.ease.tough { color: var(--bad); } .po-tbl td.ease.bye { color: var(--warn); }
+.po-tbl td.ease.average { color: var(--chalk); }
+.po-tbl .plink { font-size: 14px; }
+.wpri { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; background: var(--turf-2); border-radius: 14px; padding: 12px 14px; margin: 4px 0 6px; font-size: 15px; }
+.wpri .n { font-size: 34px; font-weight: 700; color: var(--you); line-height: 1; }
+.wpri p { margin: 3px 0 0; font-size: 13px; color: var(--dim); }

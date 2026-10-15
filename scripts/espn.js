@@ -221,6 +221,8 @@ async function buildSnapshot(getJSON, leagueId, season, swid) {
       ppr: pprPts,
       slots: slotCount,
       playoffTeams: s.scheduleSettings.playoffTeamCount,
+      // How waivers work: does the order reset every week, and how long players stay on waivers.
+      waivers: { reset: !!(s.acquisitionSettings || {}).waiverOrderReset, hours: (s.acquisitionSettings || {}).waiverHours || null },
       regWeeks,
     },
     me, teams, sched, proTeams, players, offers,

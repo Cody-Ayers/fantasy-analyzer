@@ -130,7 +130,48 @@ function renderTeam() {
     ${tw.best.bench.filter((x) => x.p.s !== 'IR').sort((a, b) => b.v - a.v).map((x) => playerRow('BN', x.p, x.v, { state: x.state })).join('')}
   </ul></div>
 
-  ${irSection(s)}`;
+  ${opponentSection(s, tw)}
+
+  ${irSection(s)}
+
+  ${playoffSection(s, tw)}`;
+}
+
+// Your opponent this week: their lineup, who's questionable, where they're weak.
+function opponentSection(s, tw) {
+  const op = A.opponentPreview(s, tw.oppId);
+  if (!op) return '';
+  const opp = s.teams.find((t) => t.id === tw.oppId);
+  const slotName = (k) => ({ DST: 'D/ST' }[k] || k);
+  const notes = [];
+  if (op.weak.length) notes.push(`Weak at <b>${op.weak.map((c) => slotName(c.slot)).join(' and ')}</b> (${op.weak.map((c) => `${f1(-c.diff)} below a typical team`).join(', ')}).`);
+  if (op.strong.length) notes.push(`Strong at <b>${op.strong.map((c) => slotName(c.slot)).join(' and ')}</b>.`);
+  if (op.iffy.length) notes.push(`<b>${op.iffy.length} questionable</b> starter${op.iffy.length > 1 ? 's' : ''}: ${esc(list(op.iffy.map((p) => p.n)))}.`);
+  return `
+  <h2 class="h-espn">Your opponent ${espnBtn(espnUrl.team(tw.oppId), 'Their team in ESPN')}</h2>
+  <details class="sheetbox opp">
+    <summary><b>${esc(opp.name)}</b> <span class="dim">${record(opp)}, ${f1(tw.opp)} projected</span></summary>
+    ${notes.length ? `<p class="ps-sum" style="margin-top:8px">${notes.join(' ')}</p>` : ''}
+    <ul class="rows">${op.lineup.starters.map((x) => playerRow(x.slot, x.p, x.v, { state: x.state })).join('')}</ul>
+  </details>`;
+}
+
+// Fantasy playoffs: your starters' matchups in the playoff weeks.
+function playoffSection(s, tw) {
+  if (!state.hist) return '';
+  const weeks = A.playoffWeeks(s);
+  if (!weeks.length) return '';
+  const typical = A.bestLineup(A.rosterOf(s, s.me).filter((p) => p.s !== 'IR'), s.league.slots, A.rosPPG).starters.filter((x) => x.p).map((x) => x.p);
+  const rows = A.playoffSchedule(s, state.hist, typical);
+  const cell = (g) => (g.bye ? '<td class="ease bye">BYE</td>' : `<td class="ease ${g.ease || ''}">${esc(s.proTeams[g.opp]?.ab)}</td>`);
+  const worst = rows.filter((r) => r.score <= -2).map((r) => r.p.n);
+  return `
+  <h2>Fantasy playoffs</h2>
+  <p class="explain">Your usual starters' opponents in weeks ${weeks[0]}–${weeks.at(-1)}. Green is an easy matchup for that position, red is tough.${worst.length ? ` Worth planning around: <b>${esc(list(worst))}</b>.` : ''}</p>
+  <div class="sheetbox"><table class="tbl po-tbl">
+    <tr><th>Pos</th><th>Player</th>${weeks.map((w) => `<th>W${w}</th>`).join('')}</tr>
+    ${rows.map((r) => `<tr><td><span class="pos ${r.p.p}">${r.p.p === 'DST' ? 'D/ST' : r.p.p}</span></td><td class="team">${nameBtn(r.p)}</td>${r.games.map(cell).join('')}</tr>`).join('')}
+  </table></div>`;
 }
 
 // Injured reserve: every IR spot, filled or open, plus moves worth making.
@@ -216,6 +257,19 @@ function availableSection(s) {
   <div class="sheetbox"><ul class="rows">${rows || '<li class="empty">Nobody available at this position.</li>'}</ul></div>`;
 }
 
+// Where you are in the waiver line, and what a claim costs you.
+function waiverPriority(s) {
+  const me = s.teams.find((t) => t.id === s.me);
+  if (!me?.wr) return '';
+  const w = s.league.waivers || {};
+  const cost = w.reset == null ? ''
+    : w.reset
+    ? 'The order resets every week, so a claim only costs you your spot until the reset. Use it on anyone who helps.'
+    : 'A claim sends you to the back of the line, so save it for a pickup that really matters. Small upgrades can wait until the player clears waivers.';
+  return `<div class="wpri"><span class="n">#${me.wr}</span><div><b>Your waiver priority</b> of ${s.teams.length}${me.wr === 1 ? ': first in line' : ''}.
+    <p>${cost}${w.hours ? ` Dropped players stay on waivers for ${w.hours} hours.` : ''}</p></div></div>`;
+}
+
 function renderWaivers() {
   const s = state.snap;
   const picks = state.cache.waivers ??= A.waiverTargets(s);
@@ -260,6 +314,7 @@ function renderWaivers() {
   };
 
   return `
+  ${waiverPriority(s)}
   <h2>Best pickups</h2>
   <p class="explain">Each free agent is tried on your roster. We add him, drop whoever hurts least, and re-run your best lineup for all ${weeksLeft} remaining weeks, playoffs included.</p>
   ${cards || '<div class="sheetbox empty">No free agent makes your team better right now.</div>'}
@@ -337,6 +392,23 @@ function renderTrades() {
 }
 
 // ---------- League ----------
+// Points left on the bench: who sets their lineup well.
+function benchSection(s) {
+  if (!state.hist) return '<h2>Points left on the bench</h2><div class="sheetbox empty">Loading weekly lineups</div>';
+  const rows = A.benchPoints(s, state.hist);
+  if (!rows.length) return '';
+  const me = rows.find((r) => r.teamId === s.me);
+  const rank = rows.indexOf(me) + 1;
+  return `
+  <h2>Points left on the bench</h2>
+  <p class="explain">How close each manager's lineup came to the best one they could have set, using the points everyone actually scored. ${me ? `You're <b>${rank}${['st', 'nd', 'rd'][rank - 1] || 'th'}</b> of ${rows.length}: ${f1(me.left)} points left on your bench${me.worst && me.worst.left > 0.5 ? `, most in week ${me.worst.w} (${f1(me.worst.left)})` : ''}.` : ''}</p>
+  <div class="sheetbox" style="overflow-x:auto"><table class="tbl">
+    <tr><th>#</th><th>Team</th><th>Lineup</th><th>Left</th><th>Worst wk</th></tr>
+    ${rows.map((r, i) => `<tr class="${r.teamId === s.me ? 'me' : ''}"><td class="rank">${i + 1}</td><td class="team">${esc(r.team.name)}</td>
+      <td>${Math.round(r.eff * 100)}%</td><td>${f1(r.left)}</td><td>${r.worst && r.worst.left > 0.5 ? `W${r.worst.w}: ${f1(r.worst.left)}` : '–'}</td></tr>`).join('')}
+  </table></div>`;
+}
+
 function renderLeague() {
   const s = state.snap;
   const rows = state.cache.standings ??= A.standings(s);
@@ -353,6 +425,8 @@ function renderLeague() {
     <div><span class="n ${myRow.luck >= 0 ? 'good' : 'bad'}">${sign(myRow.luck)}</span><span>wins of luck</span></div>
   </div>
   ${odds.ifWin != null ? `<p class="ifs">Win this week and your odds go to <b class="good">${pct(odds.ifWin)}</b>. Lose and they drop to <b class="bad">${pct(odds.ifLose)}</b>.</p>` : ''}
+
+  ${benchSection(s)}
 
   <h2>Power rankings</h2>
   <p class="explain">All-play is your record if you played every team every week. Luck is actual wins minus what all-play says you earned. Strength is your best lineup in a normal week.</p>
@@ -523,6 +597,17 @@ const bust = (fresh) => (fresh ? `?t=${Date.now()}` : '');
 async function loadIndex(fresh = false) {
   state.leagues = await fetch(`data/leagues.json${bust(fresh)}`, { cache: 'no-cache' }).then((r) => r.json());
 }
+// Weekly history (site/data/<league>-players.json) powers the player panel,
+// bench points and playoff schedules. It loads in the background.
+function loadLeagueHistory(id, fresh) {
+  state.hist = null;
+  loadHistory(id, fresh).then((h) => {
+    if (String(state.leagueId) !== String(id)) return;
+    state.hist = h;
+    if (!$('#player').open) { const y = window.scrollY; render(); window.scrollTo(0, y); }
+  });
+}
+
 async function loadLeague(id, fresh = false) {
   if (!fresh) $('#view').innerHTML = '<div class="empty">Loading league</div>';
   state.snap = await fetch(`data/${id}.json${bust(fresh)}`, { cache: 'no-cache' }).then((r) => r.json());
@@ -530,7 +615,7 @@ async function loadLeague(id, fresh = false) {
   applyTheme(id);
   state.cache = {};
   state.reportCache = {};
-  if (fresh) loadHistory(id, true);
+  loadLeagueHistory(id, fresh);
   state.builder = null;
   store.set('league', id);
   document.querySelectorAll('#leagues button').forEach((b) => b.classList.toggle('on', b.dataset.id === String(id)));

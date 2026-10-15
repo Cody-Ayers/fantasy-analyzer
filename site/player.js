@@ -141,7 +141,12 @@ function usageSection(r) {
   </section>`;
 }
 
-function upcomingSection(r, snap, p) {
+function playoffRows(snap, hist, p, cache) {
+  const dvp = (cache.dvp ??= A.defenseVsPosition(snap, hist));
+  return A.playoffWeeks(snap).map((w) => A.matchupEase(snap, dvp, p, w));
+}
+
+function upcomingSection(r, snap, p, playoffs = []) {
   const label = { easy: 'Easy', average: 'Average', tough: 'Tough' };
   return `<section class="ps">
     <h3>Next ${r.upcoming.length} weeks</h3>
@@ -152,6 +157,11 @@ function upcomingSection(r, snap, p) {
         : `<li><span class="wkn">W${u.w}</span><span>${esc(snap.proTeams[u.opp]?.ab)}</span>
             <span class="ease ${u.ease || ''}">${u.dvp ? `${label[u.ease]} <span class="dim">${f1(u.dvp.perGame)} pts a game to ${posName(p)}s</span>` : ''}</span></li>`).join('')}
     </ul>
+    ${playoffs.length ? `<h3 style="margin-top:14px">Fantasy playoffs</h3>
+    <ul class="sched">${playoffs.map((u) => u.bye
+      ? `<li><span class="wkn">W${u.w}</span><span>Bye</span><span class="ease tough">Bye in the playoffs</span></li>`
+      : `<li><span class="wkn">W${u.w}</span><span>${esc(snap.proTeams[u.opp]?.ab)}</span>
+          <span class="ease ${u.ease || ''}">${u.dvp ? `${label[u.ease]} <span class="dim">${f1(u.dvp.perGame)} pts a game to ${posName(p)}s</span>` : ''}</span></li>`).join('')}</ul>` : ''}
   </section>`;
 }
 
@@ -184,7 +194,7 @@ export async function openPlayer(p, ctx) {
   }
   const r = A.playerReport(snap, hist, p, ctx.reportCache);
   body.innerHTML = snapSection(r) + consistencySection(r, p, snap) + weeklySection(r, snap, p) +
-    usageSection(r) + upcomingSection(r, snap, p) + (extras || '');
+    usageSection(r) + upcomingSection(r, snap, p, playoffRows(snap, hist, p, ctx.reportCache || {})) + (extras || '');
 
   // Tap or hover a bar to read that week's numbers.
   body.querySelectorAll('.chart').forEach((svg) => {

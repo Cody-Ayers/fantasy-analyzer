@@ -650,3 +650,72 @@ export function playerReport(snap, hist, p, cache = {}) {
     snapTrend, usage, upcoming,
   };
 }
+
+
+// ---------- opponent preview ----------
+// Their lineup this week and where it's weaker or stronger than a typical team.
+export function opponentPreview(snap, oppId, now = snap.now ?? Date.now()) {
+  if (!oppId) return null;
+  const lineup = bestLineupNow(snap, rosterOf(snap, oppId), now);
+  // League-typical points at each slot type: average over every team's best lineup.
+  const bySlot = (starters) => starters.reduce((m, x) => ((m[x.slot] = (m[x.slot] || 0) + x.v), m), {});
+  const all = snap.teams.map((t) => bySlot(bestLineupNow(snap, rosterOf(snap, t.id), now).starters));
+  const avg = {};
+  for (const m of all) for (const [k, v] of Object.entries(m)) avg[k] = (avg[k] || 0) + v / all.length;
+  const theirs = bySlot(lineup.starters);
+  const compare = Object.keys(avg).map((slot) => ({ slot, diff: (theirs[slot] || 0) - avg[slot] }))
+    .sort((a, b) => a.diff - b.diff);
+  return {
+    lineup,
+    iffy: lineup.starters.filter((x) => x.p && !x.locked && (x.p.i === 'Q' || x.p.i === 'D')).map((x) => x.p),
+    weak: compare.filter((c) => c.diff < -1.5).slice(0, 2),
+    strong: compare.filter((c) => c.diff > 1.5).reverse().slice(0, 2),
+  };
+}
+
+// ---------- points left on the bench ----------
+// For every team and past week: what their lineup scored vs. the best lineup
+// they could have set from the same roster.
+export function benchPoints(snap, hist) {
+  const out = {};
+  for (const [w, teams] of Object.entries(hist.lineups || {})) {
+    for (const [tid, entries] of Object.entries(teams)) {
+      const actual = entries.filter((e) => !['BE', 'IR'].includes(e[1])).reduce((a, e) => a + e[2], 0);
+      const pool = entries.filter((e) => e[1] !== 'IR').map(([id, , pts, pos]) => ({ id, p: pos, pts }));
+      const optimal = bestLineup(pool, snap.league.slots, (x) => x.pts).total;
+      const r = (out[tid] ||= { teamId: +tid, actual: 0, optimal: 0, weeks: [] });
+      r.actual += actual; r.optimal += optimal;
+      r.weeks.push({ w: +w, actual, optimal, left: optimal - actual });
+    }
+  }
+  return Object.values(out).map((r) => ({
+    ...r,
+    left: r.optimal - r.actual,
+    eff: r.optimal ? r.actual / r.optimal : 1,
+    worst: r.weeks.reduce((a, b) => (b.left > (a?.left ?? -1) ? b : a), null),
+    team: snap.teams.find((t) => t.id === r.teamId),
+  })).filter((r) => r.team).sort((a, b) => b.eff - a.eff);
+}
+
+// ---------- fantasy playoff schedule ----------
+// Each player's opponents in the fantasy playoff weeks and how easy they are.
+export function matchupEase(snap, dvp, p, w) {
+  const opp = snap.proTeams[p.t]?.opps?.[w];
+  if (opp == null) return { w, bye: true };
+  const d = (dvp[p.p] || {})[opp];
+  return { w, opp, dvp: d, ease: d ? (d.rank > d.of * 2 / 3 ? 'easy' : d.rank <= d.of / 3 ? 'tough' : 'average') : null };
+}
+export function playoffWeeks(snap) {
+  const out = [];
+  for (let w = snap.league.regWeeks + 1; w <= FINAL_WEEK; w++) out.push(w);
+  return out;
+}
+export function playoffSchedule(snap, hist, players) {
+  const dvp = defenseVsPosition(snap, hist);
+  const weeks = playoffWeeks(snap);
+  const score = { easy: 1, average: 0, tough: -1 };
+  return players.map((p) => {
+    const games = weeks.map((w) => matchupEase(snap, dvp, p, w));
+    return { p, games, score: games.reduce((a, g) => a + (g.bye ? -2 : score[g.ease] || 0), 0) };
+  });
+}
