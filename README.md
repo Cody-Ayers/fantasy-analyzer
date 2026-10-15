@@ -144,6 +144,16 @@ To refresh the data locally: `ESPN_S2=... SWID=... node scripts/fetch.mjs`
 ## Ideas for later
 - Tune the model: the numbers at the top of `site/analysis.js` (`INJURY_KEEP`, `SD_SHARE`) and the 65/35 blend in `rosPPG()`.
 
+### Phone alerts (optional)
+Lineup Lab can send a push notification to your phone when a starter is ruled out or doubtful before his game, when your lineup is leaving 3+ points on the table close to kickoff, or when a new trade offer arrives (with its grade). It uses [ntfy](https://ntfy.sh), a free notification app.
+
+1. Install the **ntfy** app (iPhone or Android).
+2. Make up a long, random topic name, like `lineuplab-7f3k9q2xw8`. Anyone who knows it can read your alerts, so don't use something guessable.
+3. In the ntfy app, tap **+** and subscribe to that topic.
+4. In your repo: **Settings → Secrets and variables → Actions → New repository secret**, name `NTFY_TOPIC`, value your topic name.
+
+Alerts are checked after every refresh, and each one is sent only once (`site/data/alerts-state.json` remembers what was sent). Test the wording without sending anything: `ALERTS_DRY_RUN=1 node scripts/alerts.mjs`.
+
 ### League looks
 Each league can have its own colors and header logo. In `leagues.json`, `themes` maps a league ID to a look:
 

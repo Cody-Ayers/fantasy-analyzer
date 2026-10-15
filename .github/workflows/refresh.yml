@@ -42,6 +42,12 @@ jobs:
           SWID: ${{ secrets.SWID }}
         run: node scripts/fetch.mjs
 
+      - name: Send phone alerts (only if the NTFY_TOPIC secret is set)
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+        run: node scripts/alerts.mjs
+
       - name: Save the new data to the repo
         run: |
           git config user.name "lineup-lab-bot"

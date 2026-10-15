@@ -348,6 +348,42 @@ function tradeCard(x) {
   </div>`;
 }
 
+// Trade offers waiting on an answer, graded the same way as the trade checker.
+function offersSection(s) {
+  const now = Date.now();
+  const offers = (s.offers || []).filter((o) => !o.expires || o.expires > now);
+  if (!offers.length) return '';
+  const byId = (id) => s.players.find((p) => p.id === id);
+  const when = (ms) => new Date(ms).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+  const cards = offers.map((o) => {
+    const team = s.teams.find((t) => t.id === o.team);
+    const give = o.give.map(byId).filter(Boolean);
+    const get = o.get.map(byId).filter(Boolean);
+    if (!team || give.length !== o.give.length || get.length !== o.get.length) return '';
+    const e = A.evaluateTrade(s, o.team, give, get);
+    const call = e.myGain > 0.3 && e.theirGain > 0 ? ['good', o.sent ? 'Good for both teams. Decent chance they say yes.' : 'Good for both teams. Worth accepting.']
+      : e.myGain > 0.3 ? ['good', o.sent ? 'Helps you, but it hurts them, so they may say no.' : 'Helps you more than them. Accept.']
+        : e.myGain > -0.3 ? ['dim', 'About even for you.']
+          : ['bad', o.sent ? 'This makes your team worse. Consider cancelling it.' : 'This makes your team worse. Decline or counter.'];
+    const pl = (p) => `<div class="pl">${nameBtn(p)}${meta(p, [`${f1(A.rosPPG(p))} per game`])}</div>`;
+    return `<div class="move offer">
+      <div class="deal-team"><b>${o.sent ? 'You offered' : 'Offer from'} ${esc(team.name)}</b><span class="dim">${o.expires ? `expires ${when(o.expires)}` : ''}</span></div>
+      <div class="deal">
+        <div class="give"><div class="side-label">You give</div>${give.map(pl).join('')}</div>
+        <div class="get"><div class="side-label">You get</div>${get.map(pl).join('')}</div>
+      </div>
+      <h3 class="${call[0]}" style="margin:2px 0 6px;font:600 18px/1.2 var(--cond)">${call[1]}</h3>
+      <div class="tally"><span>You <b class="${e.myGain >= 0 ? 'good' : 'bad'}">${sign(e.myGain)}</b> a week</span><span>Them <b class="${e.theirGain >= 0 ? 'good' : 'bad'}">${sign(e.theirGain)}</b></span><span>This week <b>${sign(e.myWeek)}</b></span></div>
+      <div class="espn-row">${e.rosterChange > 0 ? `<span class="status">You'd need to drop ${e.rosterChange} player${e.rosterChange > 1 ? 's' : ''}.</span>` : '<span></span>'}${espnBtn(espnUrl.myTeam(), o.sent ? 'View in ESPN' : 'Answer in ESPN')}</div>
+    </div>`;
+  }).join('');
+  if (!cards) return '';
+  const recv = offers.filter((o) => !o.sent).length;
+  return `<h2>Pending offers</h2>
+  <p class="explain">${recv ? `${recv} offer${recv > 1 ? 's' : ''} waiting on you` : 'Offers you sent that are waiting on the other team'}, graded on what each one does to both starting lineups over the rest of the season.</p>
+  ${cards}`;
+}
+
 function renderTrades() {
   const s = state.snap;
   const ideas = state.cache.trades ??= A.findTrades(s);
@@ -375,6 +411,8 @@ function renderTrades() {
   }
 
   return `
+  ${offersSection(s)}
+
   <h2>Trades that help both teams</h2>
   <p class="explain">Every 1-for-1 and 2-for-1 deal with every team, kept only when both starting lineups score more over the rest of the season. Those are the trades people say yes to.</p>
   ${ideas.map(tradeCard).join('') || '<div class="sheetbox empty">No trades help both sides right now.</div>'}
