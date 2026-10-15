@@ -91,42 +91,114 @@ function erf(x) {      // Abramowitz-Stegun approximation, accurate to ~1e-7
   const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
   return s * y;
 }
-export function winProb(a, b) {
-  const sd = Math.hypot(a * SD_SHARE, b * SD_SHARE) || 1;
+export function winProb(a, b, remA = a, remB = b) {
+  // The uncertainty comes from points not scored yet: a team whose players have
+  // all played has a final score. Before kickoff remA = a, so this is ±20%.
+  const sd = Math.hypot(remA * SD_SHARE, remB * SD_SHARE);
+  if (sd < 0.5) return a > b ? 1 : a < b ? 0 : 0.5;
   return normCdf((a - b) / sd);
 }
 
-// The lineup you have set right now in ESPN, scored with this week's projections.
-export function currentLineupPoints(roster) {
-  return roster.filter((p) => !['BE', 'IR'].includes(p.s)).reduce((s, p) => s + p.pw, 0);
+// ---------- game status: locks and live scoring ----------
+const GAME_MS = 3.25 * 3600 * 1000;      // a typical NFL game, kickoff to final whistle
+const FINAL_MS = 3.75 * 3600 * 1000;     // after this, treat the game as over
+
+// 'pre' (not started), 'live' (in progress) or 'final' for a player's game this week.
+export function gameState(snap, p, now = snap.now ?? Date.now()) {
+  const pro = snap.proTeams[p.t];
+  if (!pro || !pro.kick || pro.bye === snap.week) return p.lk ? 'final' : 'pre';
+  if (pro.final || now >= pro.kick + FINAL_MS) return 'final';
+  if (now >= pro.kick || p.lk) return 'live';
+  return 'pre';
+}
+// Expected points this week, counting what he's already scored.
+export function liveValue(snap, p, now = snap.now ?? Date.now()) {
+  const st = gameState(snap, p, now);
+  if (st === 'pre') return p.pw;
+  if (st === 'final') return p.ap ?? 0;
+  const left = Math.max(0, 1 - (now - snap.proTeams[p.t].kick) / GAME_MS);
+  return (p.ap ?? 0) + p.pw * left;
+}
+// Projected points he still has to score.
+function stillToScore(snap, p, now) {
+  const st = gameState(snap, p, now);
+  if (st === 'pre') return p.pw;
+  if (st === 'final') return 0;
+  return p.pw * Math.max(0, 1 - (now - snap.proTeams[p.t].kick) / GAME_MS);
 }
 
-export function thisWeek(snap, teamId = snap.me) {
+const isStarter = (p) => !['BE', 'IR'].includes(p.s);
+
+// Best lineup you can still set: players whose games have started are locked
+// where they are, and only the open slots get re-filled from unlocked players.
+export function bestLineupNow(snap, roster, now = snap.now ?? Date.now()) {
+  const r = usable(roster);
+  const locked = (p) => gameState(snap, p, now) !== 'pre';
+  const fixed = r.filter((p) => locked(p) && isStarter(p));
+  const left = { ...snap.league.slots };
+  for (const p of fixed) if (left[p.s]) left[p.s]--;
+  const open = bestLineup(r.filter((p) => !locked(p)), left, (p) => p.pw);
+  const starters = [
+    ...fixed.map((p) => ({ slot: p.s, p, v: liveValue(snap, p, now), state: gameState(snap, p, now), locked: true })),
+    ...open.starters.map((x) => ({ ...x, state: 'pre', locked: false })),
+  ].sort((a, b) => STARTING_SLOTS.indexOf(a.slot) - STARTING_SLOTS.indexOf(b.slot));
+  const used = new Set(starters.filter((x) => x.p).map((x) => x.p.id));
+  const bench = r.filter((p) => !used.has(p.id)).map((p) => ({ p, v: liveValue(snap, p, now), state: gameState(snap, p, now), locked: locked(p) }));
+  return {
+    total: starters.reduce((a, x) => a + x.v, 0),
+    remaining: starters.reduce((a, x) => a + (x.p ? stillToScore(snap, x.p, now) : 0), 0),
+    starters, bench,
+  };
+}
+
+// The lineup you have set right now in ESPN, scored live.
+export function currentLineupPoints(roster, snap, now) {
+  const starters = roster.filter(isStarter);
+  if (!snap) return starters.reduce((a, p) => a + p.pw, 0);
+  return starters.reduce((a, p) => a + liveValue(snap, p, now), 0);
+}
+function currentRemaining(roster, snap, now) {
+  return roster.filter(isStarter).reduce((a, p) => a + stillToScore(snap, p, now), 0);
+}
+
+export function thisWeek(snap, teamId = snap.me, now = snap.now ?? Date.now()) {
   const roster = rosterOf(snap, teamId);
-  const best = bestLineup(usable(roster), snap.league.slots, (p) => p.pw);
-  const current = currentLineupPoints(roster);
+  const best = bestLineupNow(snap, roster, now);
+  const current = currentLineupPoints(roster, snap, now);
+  const curRem = currentRemaining(roster, snap, now);
   const m = snap.sched.find((g) => g[0] === snap.week && (g[1] === teamId || g[2] === teamId));
   const oppId = m ? (m[1] === teamId ? m[2] : m[1]) : null;
   const oppRoster = oppId ? rosterOf(snap, oppId) : [];
-  const oppSet = currentLineupPoints(oppRoster);
-  const oppBest = bestLineup(usable(oppRoster), snap.league.slots, (p) => p.pw).total;
-  const opp = Math.max(oppSet, oppBest * 0.97);   // assume they'll fix obvious holes
+  const oppSet = currentLineupPoints(oppRoster, snap, now);
+  const oppBest = bestLineupNow(snap, oppRoster, now);
+  // Assume they'll fix obvious holes in whatever they can still change.
+  const oppFix = oppBest.total * 0.97 > oppSet;
+  const opp = oppFix ? oppBest.total * 0.97 : oppSet;
+  const oppRem = oppFix ? oppBest.remaining : currentRemaining(oppRoster, snap, now);
 
-  // Changes needed: who to start, who to sit.
+  // Changes you can still make: only players whose games haven't started.
   const startIds = new Set(best.starters.filter((x) => x.p).map((x) => x.p.id));
-  const toStart = best.starters.filter((x) => x.p && x.v > 0 && ['BE', 'IR'].includes(x.p.s));
-  const toSit = roster.filter((p) => !['BE', 'IR'].includes(p.s) && !startIds.has(p.id));
+  const toStart = best.starters.filter((x) => x.p && !x.locked && x.v > 0 && ['BE', 'IR'].includes(x.p.s));
+  const toSit = roster.filter((p) => isStarter(p) && !startIds.has(p.id) && gameState(snap, p, now) === 'pre');
+
+  // Where the week stands.
+  const states = roster.filter(isStarter).map((p) => gameState(snap, p, now));
+  const progress = { played: states.filter((x) => x === 'final').length, playing: states.filter((x) => x === 'live').length, total: states.length };
 
   // Warnings worth acting on.
   const alerts = [];
   const names = (list) => list.length > 1 ? `${list.slice(0, -1).join(', ')} and ${list.at(-1)}` : list[0];
   const iffy = [];
   for (const x of best.starters) {
-    if (!x.p) alerts.push({ level: 'bad', text: `Empty ${x.slot} slot: you have nobody who can play there this week.` });
+    if (x.locked) continue;
+    if (!x.p) alerts.push({ level: 'bad', text: `Empty ${x.slot} slot: you have nobody left who can play there this week.` });
     else if (x.v <= 0) alerts.push({ level: 'bad', text: `Your ${x.slot}, ${x.p.n}, projects 0 (${snap.proTeams[x.p.t]?.bye === snap.week ? 'bye week' : 'not expected to play'}). Pick up a replacement; see Waivers.` });
     else if (x.p.i === 'Q' || x.p.i === 'D') iffy.push(x.p.n);
   }
   if (iffy.length) alerts.push({ level: 'warn', text: `${names(iffy)} ${iffy.length > 1 ? 'are' : 'is'} questionable. Check news before kickoff and have a backup ready.` });
+  if (progress.played + progress.playing > 0) {
+    alerts.push({ level: 'info', text: `${progress.played + progress.playing} of your ${progress.total} starters ${progress.played + progress.playing > 1 ? 'have' : 'has'} already kicked off and ${progress.played + progress.playing > 1 ? 'are' : 'is'} locked. The lineup advice only moves players whose games haven't started.` });
+  }
   const stuck = roster.filter((p) => p.s === 'IR' && !IR_ELIGIBLE.has(p.i)).map((p) => p.n);
   if (stuck.length) {
     alerts.push({ level: 'bad', text: `${names(stuck)} ${stuck.length > 1 ? 'are' : 'is'} in an IR slot but no longer IR-eligible. ESPN blocks adds and trades until ${stuck.length > 1 ? 'they move' : 'he moves'} back to your roster.` });
@@ -138,11 +210,15 @@ export function thisWeek(snap, teamId = snap.me) {
     alerts.push({ level: 'info', text: `You have ${open} open roster spot${open > 1 ? 's' : ''}. Free points: pick someone up.` });
   }
 
+  // Live scoreboard numbers (actual points so far) for the matchup card.
+  const scoreNow = (r) => r.filter(isStarter).reduce((a, p) => a + (gameState(snap, p, now) === 'pre' ? 0 : (p.ap ?? 0)), 0);
+
   return {
-    oppId, best, current, opp, oppSet,
+    oppId, best, current, opp, oppSet, progress,
+    scored: scoreNow(roster), oppScored: scoreNow(oppRoster),
     gain: best.total - current,
-    winNow: winProb(current, opp),
-    winBest: winProb(best.total, opp),
+    winNow: winProb(current, opp, curRem, oppRem),
+    winBest: winProb(best.total, opp, best.remaining, oppRem),
     toStart, toSit, alerts,
   };
 }

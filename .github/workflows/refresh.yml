@@ -6,10 +6,13 @@ name: Refresh leagues and publish
 
 on:
   schedule:
-    # Times are UTC. 13:17 UTC is 6:17am Pacific. Daily, plus a Sunday
-    # pre-kickoff run (16:47 UTC = 9:47am PT) after inactives are announced.
-    - cron: '17 13 * * *'
-    - cron: '47 16 * * 0'
+    # Times are UTC (Pacific = UTC-7 in season). Every morning at 6:17am PT,
+    # plus every 15 minutes while NFL games are being played:
+    - cron: '17 13 * * *'           # daily, 6:17am PT
+    - cron: '*/15 13-23 * * 0'      # Sunday 6am-5pm PT (London games through the late window)
+    - cron: '*/15 0-4 * * 1'        # Sunday night game, 5-9pm PT
+    - cron: '*/15 0-4 * * 2'        # Monday night game
+    - cron: '*/15 0-4 * * 5'        # Thursday night game
   workflow_dispatch:        # adds a "Run workflow" button in the Actions tab
   push:
     branches: [main]        # refresh and republish whenever you change the code

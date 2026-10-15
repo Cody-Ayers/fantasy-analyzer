@@ -57,9 +57,13 @@ const expertRank = (p) => (p.er ? `Experts rank him ${p.p === 'DST' ? 'D/ST' : p
 
 function playerRow(slot, p, value, opts = {}) {
   if (!p) return `<li class="row"><span class="slot">${slot}</span><div class="pname dim">Nobody available</div><div class="pts">0.0</div></li>`;
-  return `<li class="row ${opts.change ? 'change' : ''}">
+  // Games that have started: show what he's scored and lock the row.
+  const st = opts.state || 'pre';
+  const live = st === 'live' ? `<span class="flag LIVE">LIVE ${f1(p.ap ?? 0)}</span>` : st === 'final' ? '<span class="flag FINAL">FINAL</span>' : '';
+  if (st !== 'pre' && !opts.label) opts.label = st === 'final' ? 'scored' : 'expected';
+  return `<li class="row ${opts.change ? 'change' : ''} ${st !== 'pre' ? 'locked' : ''}">
     <span class="slot">${slot}</span>
-    <div><div class="pname">${nameBtn(p)} ${flags(p, opts.change ? '<span class="flag START">START</span>' : '')}</div>
+    <div><div class="pname">${nameBtn(p)} ${flags(p, (opts.change ? '<span class="flag START">START</span>' : '') + live)}</div>
       ${meta(p, [game(p), `${f1(p.avg)} avg`, p.er ? `${p.p === 'DST' ? 'D/ST' : p.p}${p.er} by experts` : ''])}</div>
     <div class="pts ${opts.up ? 'up' : ''}">${f1(value)}<small>${opts.label || 'proj'}</small></div></li>`;
 }
@@ -89,35 +93,41 @@ function renderTeam() {
   const startIds = new Set(tw.toStart.map((x) => x.p.id));
   const win = tw.winBest;
 
-  const fix = tw.gain > 0.05
+  const started = tw.progress.played + tw.progress.playing > 0;
+  const done = tw.progress.total && tw.progress.played === tw.progress.total;
+  const fix = done ? '<div class="fix dim">All your starters have played. Final scores update as the last games finish.</div>'
+    : tw.gain > 0.05
     ? `<div class="fix"><strong>Set your best lineup for ${sign(tw.gain)} points.</strong> Your win chance goes from ${pct(tw.winNow)} to ${pct(tw.winBest)}.
         <p>Start ${esc(list(tw.toStart.map((x) => x.p.n)))}. Sit ${esc(list(tw.toSit.map((p) => p.n)))}.</p></div>`
     : '<div class="fix dim">The lineup you have set in ESPN is already your best one.</div>';
 
   return `
-  <h2>Week ${s.week}</h2>
+  <h2>Week ${s.week}${started && !done ? ' <span class="flag LIVE">LIVE</span>' : ''}</h2>
   <div class="matchup">
     <div class="scoreline">
-      <div class="team-l"><div class="tname">${esc(me.name)}</div><div class="trec">${record(me)}</div><div class="score">${f1(tw.best.total)}</div></div>
-      <div class="team-r"><div class="tname">${esc(opp?.name ?? 'No game')}</div><div class="trec">${opp ? record(opp) : ''}</div><div class="score">${f1(tw.opp)}</div></div>
+      <div class="team-l"><div class="tname">${esc(me.name)}</div><div class="trec">${record(me)}</div><div class="score">${f1(tw.best.total)}</div>
+        ${started ? `<div class="sofar">${f1(tw.scored)} scored so far</div>` : ''}</div>
+      <div class="team-r"><div class="tname">${esc(opp?.name ?? 'No game')}</div><div class="trec">${opp ? record(opp) : ''}</div><div class="score">${f1(tw.opp)}</div>
+        ${started ? `<div class="sofar">${f1(tw.oppScored)} scored so far</div>` : ''}</div>
     </div>
+    ${started ? `<p class="livenote">Projected finals: points already scored plus what's still to come. ${tw.progress.played} of your starters done, ${tw.progress.playing} playing now.</p>` : ''}
     ${field(win)}
     <div class="fieldnote"><span><b>${pct(win)}</b> to win</span><span>Ball ${yardLine(win)}</span></div>
     ${fix}
     <div class="espn-row">${espnBtn(espnUrl.myTeam(), 'Set lineup in ESPN')}${espnBtn(espnUrl.matchup(), 'Matchup in ESPN')}</div>
   </div>
 
-  ${tw.alerts.length ? `<h2>Before kickoff</h2><ul class="alerts">${tw.alerts.map((a) => `<li class="lvl-${a.level}">${esc(a.text)}</li>`).join('')}</ul>` : ''}
+  ${tw.alerts.length ? `<h2>${started ? 'Heads up' : 'Before kickoff'}</h2><ul class="alerts">${tw.alerts.map((a) => `<li class="lvl-${a.level}">${esc(a.text)}</li>`).join('')}</ul>` : ''}
 
   <h2>Best lineup</h2>
   <div class="sheetbox">
-    <ul class="rows">${tw.best.starters.map((x) => playerRow(x.slot, x.p, x.v, { change: x.p && startIds.has(x.p.id) })).join('')}</ul>
-    <div class="total"><span>Projected total</span><span class="n">${f1(tw.best.total)}</span></div>
+    <ul class="rows">${tw.best.starters.map((x) => playerRow(x.slot, x.p, x.v, { change: x.p && startIds.has(x.p.id), state: x.state })).join('')}</ul>
+    <div class="total"><span>${started ? 'Projected final' : 'Projected total'}</span><span class="n">${f1(tw.best.total)}</span></div>
   </div>
 
   <h2>Bench</h2>
   <div class="sheetbox"><ul class="rows">
-    ${tw.best.bench.filter((x) => x.p.s !== 'IR').sort((a, b) => b.v - a.v).map((x) => playerRow('BN', x.p, x.v)).join('')}
+    ${tw.best.bench.filter((x) => x.p.s !== 'IR').sort((a, b) => b.v - a.v).map((x) => playerRow('BN', x.p, x.v, { state: x.state })).join('')}
   </ul></div>
 
   ${irSection(s)}`;
@@ -437,6 +447,47 @@ function showPlayer(id) {
   openPlayer(p, { snap: s, leagueId: state.leagueId, dialog: $('#player'), flags, game, ownerName, extras, reportCache: state.reportCache });
 }
 
+// ---------- old data warning ----------
+// The data refreshes every morning (and every 15 minutes during games). If it's
+// more than a day old, the automatic refresh is probably failing, almost
+// always because the ESPN cookies expired.
+function staleBanner(minutesOld) {
+  if (minutesOld < 26 * 60) return '';
+  const days = Math.floor(minutesOld / 1440);
+  const age = days >= 1 ? `${days} day${days > 1 ? 's' : ''}` : `${Math.round(minutesOld / 60)} hours`;
+  const fixUrl = repo ? `https://github.com/${repo.owner}/${repo.repo}/settings/secrets/actions` : null;
+  const runsUrl = repo ? R.actionsPage(repo) : null;
+  return `<div class="stale" role="alert"><b>This data is ${age} old.</b> The automatic refresh has probably stopped working.
+    <p>The usual cause is expired ESPN cookies. Copy new <i>espn_s2</i> and <i>SWID</i> values from Chrome${fixUrl ? ` into <a href="${fixUrl}" target="_blank" rel="noopener">your GitHub secrets</a>` : ' into your GitHub secrets'}, then tap Refresh.${runsUrl ? ` <a href="${runsUrl}" target="_blank" rel="noopener">See the failed runs</a>.` : ''}</p></div>`;
+}
+
+// ---------- game-day updates ----------
+// While games are being played (or whenever you come back to the app), check
+// for newer data and reload quietly, keeping your tab and scroll position.
+function gamesInProgress() {
+  const now = Date.now();
+  return Object.values(state.snap?.proTeams || {}).some((t) => t.kick && now >= t.kick && now < t.kick + 4 * 3600e3 && !t.final);
+}
+async function checkForNewData() {
+  if (document.hidden || !state.snap || $('#refresh').disabled) return;
+  try {
+    const idx = await fetch(`data/leagues.json?t=${Date.now()}`, { cache: 'no-store' }).then((r) => r.json());
+    const mine = idx.find((l) => String(l.id) === String(state.leagueId));
+    if (mine && mine.fetchedAt !== state.snap.fetchedAt) {
+      state.leagues = idx;
+      const y = window.scrollY;
+      await loadLeague(state.leagueId, true);
+      window.scrollTo(0, y);
+    } else if (!$('#player').open) {
+      render();   // at least update "updated X min ago" and live estimates
+    }
+  } catch { /* offline; try again next time */ }
+}
+function startGameDayUpdates() {
+  setInterval(() => { if (gamesInProgress()) checkForNewData(); }, 3 * 60 * 1000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForNewData(); });
+}
+
 // ---------- wiring ----------
 const RENDER = { team: renderTeam, waivers: renderWaivers, trades: renderTrades, league: renderLeague };
 
@@ -447,7 +498,7 @@ function render() {
   const when = ago < 1 ? 'just now' : ago < 60 ? `${ago} min ago` : ago < 1440 ? `${Math.round(ago / 60)} hr ago` : `${Math.round(ago / 1440)} days ago`;
   const scoring = s.league.ppr === 1 ? 'PPR' : s.league.ppr ? `${s.league.ppr} PPR` : 'standard';
   $('#updated').textContent = `Week ${s.week}, ${scoring}, updated ${when}`;
-  $('#view').innerHTML = RENDER[state.tab]() + '<p class="foot">Projections, rankings and analyst notes from ESPN. Trending adds from Sleeper.</p>';
+  $('#view').innerHTML = staleBanner(ago) + RENDER[state.tab]() + '<p class="foot">Projections, rankings and analyst notes from ESPN. Trending adds from Sleeper.</p>';
 }
 
 // ---------- league looks ----------
@@ -527,4 +578,4 @@ async function init() {
   const saved = store.get('league');
   await loadLeague(state.leagues.some((l) => String(l.id) === saved) ? saved : state.leagues[0].id);
 }
-init();
+init().then(startGameDayUpdates);

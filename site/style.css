@@ -424,3 +424,17 @@ h2.h-espn { display: flex; justify-content: space-between; align-items: center; 
 h2.h-espn .espn-btn { font-size: 13px; padding: 6px 10px; }
 .matchup .espn-row { flex-wrap: nowrap; }
 .matchup .espn-btn { font-size: 13px; padding: 7px 10px; }
+
+/* ---------- game day ---------- */
+.flag.LIVE { background: color-mix(in srgb, var(--bad) 22%, transparent); color: var(--bad); }
+.flag.FINAL { background: var(--turf-3); color: var(--dim); }
+h2 .flag { font-size: 13px; vertical-align: middle; margin-left: 6px; }
+.row.locked .slot::after { content: ''; display: block; width: 8px; height: 8px; margin: 4px auto 0; border-radius: 2px; border: 1.5px solid var(--dim); border-top-width: 3px; }
+.sofar { font-size: 13px; color: var(--dim); margin-top: 4px; }
+.livenote { margin: 10px 0 0; font-size: 13px; color: var(--dim); }
+
+/* ---------- old-data banner ---------- */
+.stale { background: color-mix(in srgb, var(--warn) 14%, var(--turf-2)); border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent); border-radius: 14px; padding: 12px 14px; margin-bottom: 14px; font-size: 15px; }
+.stale b { color: var(--warn); }
+.stale p { margin: 4px 0 0; font-size: 14px; color: var(--dim); }
+.stale a { color: var(--chalk); }

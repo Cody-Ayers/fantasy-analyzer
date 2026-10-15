@@ -75,6 +75,29 @@ async function buildHistory(getJSON, getPublicJSON, snap) {
     }
   } catch (e) { /* no snap data this run */ }
 
+  // 4) Every team's actual lineup in each past week, for "points left on the bench".
+  //    lineups[week][teamId] = [[playerId, slot, points, position], ...]
+  const SLOT = { 0: 'QB', 2: 'RB', 4: 'WR', 6: 'TE', 16: 'DST', 17: 'K', 20: 'BE', 21: 'IR', 23: 'FLEX' };
+  const POS = { 1: 'QB', 2: 'RB', 3: 'WR', 4: 'TE', 5: 'K', 16: 'DST' };
+  const lineups = {};
+  try {
+    for (const w of weeks) {
+      const box = await getJSON(`${L}?view=mBoxscore&scoringPeriodId=${w}`);
+      for (const m of box.schedule || []) {
+        if (m.matchupPeriodId !== w) continue;
+        for (const side of [m.home, m.away]) {
+          const entries = side && side.rosterForCurrentScoringPeriod && side.rosterForCurrentScoringPeriod.entries;
+          if (!entries) continue;
+          (lineups[w] ||= {})[side.teamId] = entries.map((e) => [
+            e.playerId, SLOT[e.lineupSlotId] || 'BE',
+            r1((e.playerPoolEntry && e.playerPoolEntry.appliedStatTotal) || 0),
+            POS[e.playerPoolEntry && e.playerPoolEntry.player && e.playerPoolEntry.player.defaultPositionId] || '?',
+          ]);
+        }
+      }
+    }
+  } catch (e) { /* optional */ }
+
   // Compact output: players[id] = [[week, pts, proj, snap%, stats], ...]
   const players = {};
   for (const [id, byWeek] of Object.entries(hist)) {
@@ -83,7 +106,7 @@ async function buildHistory(getJSON, getPublicJSON, snap) {
       return [w, h.pts ?? null, h.proj ?? null, h.snap ?? null, h.s || {}];
     });
   }
-  return { season, week, weeks, fetchedAt: new Date().toISOString(), players };
+  return { season, week, weeks, fetchedAt: new Date().toISOString(), players, lineups };
 }
 
 module.exports = { buildHistory };

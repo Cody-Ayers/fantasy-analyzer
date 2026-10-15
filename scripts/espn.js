@@ -37,6 +37,7 @@ function slimPlayer(p, week, season, extra, opts = {}) {
       (per == null ? String(s.id).endsWith(String(season)) : s.scoringPeriodId === per));
   const projWeek = find(1, 1, week);
   const lastWeek = find(0, 1, week - 1);
+  const thisWeek = find(0, 1, week);
   const seasonAct = find(0, 0);
   const seasonProj = find(1, 0);
   const avg = seasonAct && seasonAct.appliedAverage;
@@ -51,6 +52,7 @@ function slimPlayer(p, week, season, extra, opts = {}) {
     gp: avg ? Math.round(seasonAct.appliedTotal / avg) : 0, // games played
     pa: r1(seasonProj ? seasonProj.appliedAverage : 0),     // ESPN's projected points per game
     lw: lastWeek ? r1(lastWeek.appliedTotal) : null,        // last week's actual points
+    ap: thisWeek ? r1(thisWeek.appliedTotal) : null,        // actual points so far this week (live)
     own: r1(p.ownership ? p.ownership.percentOwned : 0),    // % of ESPN leagues rostering him
     tr: r1(p.ownership ? p.ownership.percentChange : 0),    // change in that % this week (trend)
     er: expertRank(p, week, opts.ppr),                       // ESPN experts' rank at his position
@@ -151,6 +153,7 @@ async function buildSnapshot(getJSON, leagueId, season, swid) {
       name: (t.name || `${t.location || ''} ${t.nickname || ''}`).trim().replace(/\s+/g, ' '),
       w: o.wins || 0, l: o.losses || 0, t: o.ties || 0,
       pf: r1(o.pointsFor || 0), pa: r1(o.pointsAgainst || 0),
+      wr: t.waiverRank || null,          // waiver priority (1 = first in line)
     };
   });
   const me = (meta.teams.find((t) => (t.owners || []).includes(swid)) || {}).id || null;
@@ -160,7 +163,8 @@ async function buildSnapshot(getJSON, leagueId, season, swid) {
   for (const t of ros.teams) {
     for (const e of t.roster.entries) {
       players.push(slimPlayer(e.playerPoolEntry.player, week, season,
-        { tm: t.id, s: SLOT[e.lineupSlotId] || 'BE' }, { ppr: pprPts, outlook: t.id === me }));
+        { tm: t.id, s: SLOT[e.lineupSlotId] || 'BE', ...(e.playerPoolEntry.lineupLocked ? { lk: 1 } : {}) },
+        { ppr: pprPts, outlook: t.id === me }));
     }
   }
   for (const f of free) {
@@ -179,8 +183,30 @@ async function buildSnapshot(getJSON, leagueId, season, swid) {
       const gw = ((t.proGamesByScoringPeriod || {})[w] || [])[0];
       opps.push(gw ? (gw.homeProTeamId === t.id ? gw.awayProTeamId : gw.homeProTeamId) : null);
     }
-    proTeams[t.id] = { ab: t.abbrev, bye: t.byeWeek, opp, home: g ? g.homeProTeamId === t.id : null, opps };
+    proTeams[t.id] = { ab: t.abbrev, bye: t.byeWeek, opp, home: g ? g.homeProTeamId === t.id : null, opps,
+      kick: g ? g.date : null,           // this week's kickoff (ms since 1970, UTC)
+      final: g ? !!g.statsOfficial : false };
   }
+
+  // 5) Trade offers waiting on an answer that involve your team (sent or received).
+  let offers = [];
+  try {
+    const pend = await getJSON(`${L}?view=mPendingTransactions`);
+    offers = (pend.pendingTransactions || [])
+      .filter((t) => t.type === 'TRADE_PROPOSAL' && t.status === 'PENDING' &&
+        (t.items || []).some((i) => i.fromTeamId === me || i.toTeamId === me))
+      .map((t) => {
+        const other = (t.items.find((i) => i.fromTeamId !== me) || t.items.find((i) => i.toTeamId !== me) || {});
+        return {
+          id: t.id,
+          sent: t.teamId === me,                         // true = you proposed it
+          team: other.fromTeamId !== me ? other.fromTeamId : other.toTeamId,
+          give: t.items.filter((i) => i.fromTeamId === me).map((i) => i.playerId),
+          get: t.items.filter((i) => i.toTeamId === me).map((i) => i.playerId),
+          proposed: t.proposedDate || null, expires: t.expirationDate || null,
+        };
+      });
+  } catch (e) { /* optional */ }
 
   const regWeeks = s.scheduleSettings.matchupPeriodCount;
   const sched = ros.schedule
@@ -197,7 +223,7 @@ async function buildSnapshot(getJSON, leagueId, season, swid) {
       playoffTeams: s.scheduleSettings.playoffTeamCount,
       regWeeks,
     },
-    me, teams, sched, proTeams, players,
+    me, teams, sched, proTeams, players, offers,
   };
 }
 

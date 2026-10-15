@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Lineup Lab app icon: Thunder Dome purple and Country Club Misfits green,
+       split like a field at midfield, with the Lineup Lab "L" in gold. -->
+  <defs><clipPath id="sq"><rect width="512" height="512"/></clipPath></defs>
+  <g clip-path="url(#sq)">
+    <rect width="512" height="512" fill="#2a1752"/>
+    <path d="M512 0 V512 H0 Z" fill="#1d5236"/>
+    <!-- yard lines -->
+    <g stroke="#f6ecd6" stroke-opacity=".14" stroke-width="6">
+      <line x1="102" y1="0" x2="102" y2="512"/><line x1="205" y1="0" x2="205" y2="512"/>
+      <line x1="307" y1="0" x2="307" y2="512"/><line x1="410" y1="0" x2="410" y2="512"/>
+    </g>
+  </g>
+  <path d="M168 128 V368 H344" fill="none" stroke="#f5c10b" stroke-width="64" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
