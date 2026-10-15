@@ -1,21 +1,23 @@
-/* Lineup Lab: a night game. Turf-dark background, chalk-white type, goalpost
-   yellow for you, slate blue for the other guy. Barlow (signage type) carries
-   the personality; the condensed cut handles every number and heading. */
+/* Lineup Lab, Thunder Dome colors: the league logo's royal purple, gold and
+   cream. Gold is you, bright purple is the other guy. Barlow (signage type)
+   carries the personality; the condensed cut handles every number and heading.
+   The variable names below are kept from the first (green) theme, so every
+   rule in this file picks up the new colors. */
 :root {
-  --turf: #0c1712;        /* page */
-  --turf-2: #12221a;      /* surfaces */
-  --turf-3: #1a2e23;      /* raised / pressed */
-  --line: #24392d;        /* hairlines */
-  --chalk: #edf1e8;       /* text */
-  --dim: #8fa396;         /* secondary text */
-  --you: #f2c14e;         /* goalpost yellow */
-  --them: #8ea9d6;        /* opponent slate */
-  --good: #63d291;
-  --warn: #f0a94a;
-  --bad: #ff7a6b;
-  --field: #1f4a30;       /* the field strip */
-  --pos-qb: #ff8b7b; --pos-rb: #63d291; --pos-wr: #79b8ff;
-  --pos-te: #f0a94a; --pos-k: #c3a8ff; --pos-dst: #a9b7ae;
+  --turf: #0e0718;        /* page: the logo's near-black purple */
+  --turf-2: #180e29;      /* surfaces */
+  --turf-3: #231538;      /* raised / pressed */
+  --line: #33234d;        /* hairlines */
+  --chalk: #f6ecd6;       /* text: the logo's cream */
+  --dim: #a698bd;         /* secondary text: dusty lavender */
+  --you: #f5c10b;         /* the logo's gold */
+  --them: #a78bfa;        /* opponent: royal purple, brightened to read on dark */
+  --good: #6fd69a;
+  --warn: #ff9f50;        /* orange, so warnings don't blend into your gold */
+  --bad: #ff7a7a;
+  --field: #2a1752;       /* the dome's field: deep royal purple */
+  --pos-qb: #ff8b8b; --pos-rb: #6fd69a; --pos-wr: #7cc0ff;
+  --pos-te: #ff9f50; --pos-k: #d4b8ff; --pos-dst: #c2b6d1;
   --cond: 'Barlow Condensed', 'Arial Narrow', sans-serif;
   --body: 'Barlow', system-ui, -apple-system, sans-serif;
   color-scheme: dark;
@@ -46,7 +48,7 @@ a { color: var(--you); }
 .bar-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .brand > div { min-width: 0; }
-.mark { width: 30px; height: 30px; flex: none; background: var(--turf-3); border-radius: 8px; }
+.mark { width: 30px; height: 30px; flex: none; background: #380d7c; border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(245, 193, 11, .35); }
 .mark path { fill: none; stroke: var(--you); stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; }
 h1 { margin: 0; font: 700 22px/1 var(--cond); letter-spacing: .01em; }
 #updated { margin: 3px 0 0; font-size: 13px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -96,11 +98,11 @@ main > h2:first-child { margin-top: 2px; }
 .field::after { right: 0; background: color-mix(in srgb, var(--them) 60%, var(--field)); }
 .field .play {   /* the 100 yards between the end zones, with a chalk line every 10 */
   position: absolute; left: 8%; right: 8%; top: 0; bottom: 0;
-  background: repeating-linear-gradient(90deg, rgba(237, 241, 232, .22) 0 1px, transparent 1px 10%);
+  background: repeating-linear-gradient(90deg, rgba(246, 236, 214, .22) 0 1px, transparent 1px 10%);
 }
 .field .yd {
   position: absolute; bottom: 4px; transform: translateX(-50%);
-  font: 600 11px/1 var(--cond); color: rgba(237, 241, 232, .55);
+  font: 600 11px/1 var(--cond); color: rgba(246, 236, 214, .55);
 }
 .field .los { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--you); transform: translateX(-1px); }
 .field .ball {
@@ -250,7 +252,7 @@ select {
   border: 1px solid var(--line); border-radius: 18px; padding: 20px 18px 16px;
   background: var(--turf-2); color: var(--chalk);
 }
-.sheet::backdrop { background: rgba(4, 10, 7, .7); }
+.sheet::backdrop { background: rgba(8, 3, 16, .72); }
 .sheet h2 { margin: 0 0 8px; }
 .sheet p, .sheet li { font-size: 15px; }
 .sheet ol { padding-left: 20px; margin: 10px 0 14px; display: grid; gap: 6px; }
@@ -338,7 +340,7 @@ select {
 .chart .wk, .chart .na { font: 600 11px var(--cond); fill: var(--dim); text-anchor: middle; }
 .chart .val { font: 600 12px var(--cond); fill: var(--chalk); text-anchor: middle; }
 .chart .bar { cursor: pointer; outline: none; }
-.chart .bar.on .hit, .chart .bar:focus-visible .hit { fill: rgba(237, 241, 232, .06); }
+.chart .bar.on .hit, .chart .bar:focus-visible .hit { fill: rgba(246, 236, 214, .06); }
 .chart .bar.on .wk { fill: var(--chalk); }
 .readout { font-size: 14px; color: var(--dim); margin: 6px 0 0; min-height: 1.4em; }
 

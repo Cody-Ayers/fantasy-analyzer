@@ -36,7 +36,8 @@ function bars({ data, max, cls, tick, label, readout, value }) {
     const t = tick && d.t != null ? `<line class="tick" x1="${cx - bw / 2 - 3}" x2="${cx + bw / 2 + 3}" y1="${y(d.t)}" y2="${y(d.t)}"/>` : '';
     const missing = d.v == null ? `<text class="na" x="${cx}" y="${H - padB - 6}">–</text>` : '';
     // Print each bar's value on top when there are few enough bars to stay readable.
-    const val = value && d.v != null && n <= 10 ? `<text class="val" x="${cx}" y="${top - 5}">${esc(value(d.v))}</text>` : '';
+    const labelY = Math.min(top, tick && d.t != null ? y(d.t) : top) - 5;   // sit above the bar and the projection line
+    const val = value && d.v != null && n <= 10 ? `<text class="val" x="${cx}" y="${labelY}">${esc(value(d.v))}</text>` : '';
     return `<g class="bar" tabindex="0" data-read="${esc(readout(d))}">
       <rect class="hit" x="${slot * i}" y="0" width="${slot}" height="${H}"/>
       ${path ? `<path class="${cls}" d="${path}"/>` : ''}${t}${missing}${val}
