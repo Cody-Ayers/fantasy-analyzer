@@ -450,6 +450,23 @@ function render() {
   $('#view').innerHTML = RENDER[state.tab]() + '<p class="foot">Projections, rankings and analyst notes from ESPN. Trending adds from Sleeper.</p>';
 }
 
+// ---------- league looks ----------
+// Each theme is a set of colors in style.css (:root[data-theme="..."]) plus a
+// logo for the header. leagues.json picks one per league; others get the default.
+const THEMES = {
+  thunder: { logo: 'img/thunder.png', bar: '#0e0718' },
+  misfits: { logo: 'img/misfits-mark.svg', bar: '#0a1a12' },
+};
+function applyTheme(leagueId) {
+  const name = state.leagues.find((l) => String(l.id) === String(leagueId))?.theme;
+  const t = THEMES[name];
+  if (t) document.documentElement.dataset.theme = name; else delete document.documentElement.dataset.theme;
+  const img = $('.mark-img');
+  img.hidden = !t; $('.mark').toggleAttribute('hidden', !!t);
+  if (t) img.src = t.logo;
+  document.querySelector('meta[name="theme-color"]').content = t ? t.bar : '#0c1712';
+}
+
 // "?t=" makes the browser and GitHub's cache fetch the newest file after a refresh.
 const bust = (fresh) => (fresh ? `?t=${Date.now()}` : '');
 async function loadIndex(fresh = false) {
@@ -459,6 +476,7 @@ async function loadLeague(id, fresh = false) {
   if (!fresh) $('#view').innerHTML = '<div class="empty">Loading league</div>';
   state.snap = await fetch(`data/${id}.json${bust(fresh)}`, { cache: 'no-cache' }).then((r) => r.json());
   state.leagueId = id;
+  applyTheme(id);
   state.cache = {};
   state.reportCache = {};
   if (fresh) loadHistory(id, true);

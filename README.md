@@ -143,3 +143,12 @@ To refresh the data locally: `ESPN_S2=... SWID=... node scripts/fetch.mjs`
 
 ## Ideas for later
 - Tune the model: the numbers at the top of `site/analysis.js` (`INJURY_KEEP`, `SD_SHARE`) and the 65/35 blend in `rosPPG()`.
+
+### League looks
+Each league can have its own colors and header logo. In `leagues.json`, `themes` maps a league ID to a look:
+
+```json
+"themes": { "144706": "thunder", "934437639": "misfits" }
+```
+
+The looks live in `site/style.css` (`:root[data-theme="..."]`, just a set of color variables) and the logos in `site/img/`. Leagues without a theme use the default green look. To add your own, copy a theme block in `style.css`, give it a new name and colors, add the name and logo to `THEMES` in `site/app.js`, and point your league at it in `leagues.json`.

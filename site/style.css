@@ -1,27 +1,59 @@
-/* Lineup Lab, Thunder Dome colors: the league logo's royal purple, gold and
-   cream. Gold is you, bright purple is the other guy. Barlow (signage type)
-   carries the personality; the condensed cut handles every number and heading.
-   The variable names below are kept from the first (green) theme, so every
-   rule in this file picks up the new colors. */
+/* Lineup Lab themes. Every rule in this file uses the color variables below,
+   so a theme is just a set of variable values. The app sets
+   <html data-theme="..."> from leagues.json, so each league gets its own look.
+   Barlow (signage type) carries the personality; the condensed cut handles
+   every number and heading. */
+
+/* Default: a night game. Turf-dark background, chalk text, goalpost yellow for
+   you, slate blue for the other guy. Used for any league without a theme. */
 :root {
-  --turf: #0e0718;        /* page: the logo's near-black purple */
-  --turf-2: #180e29;      /* surfaces */
-  --turf-3: #231538;      /* raised / pressed */
-  --line: #33234d;        /* hairlines */
-  --chalk: #f6ecd6;       /* text: the logo's cream */
-  --dim: #a698bd;         /* secondary text: dusty lavender */
-  --you: #f5c10b;         /* the logo's gold */
-  --them: #a78bfa;        /* opponent: royal purple, brightened to read on dark */
-  --good: #6fd69a;
-  --warn: #ff9f50;        /* orange, so warnings don't blend into your gold */
-  --bad: #ff7a7a;
-  --field: #2a1752;       /* the dome's field: deep royal purple */
-  --pos-qb: #ff8b8b; --pos-rb: #6fd69a; --pos-wr: #7cc0ff;
-  --pos-te: #ff9f50; --pos-k: #d4b8ff; --pos-dst: #c2b6d1;
+  --turf: #0c1712;        /* page */
+  --turf-2: #12221a;      /* surfaces */
+  --turf-3: #1a2e23;      /* raised / pressed */
+  --line: #24392d;        /* hairlines */
+  --chalk: #edf1e8;       /* text */
+  --dim: #8fa396;         /* secondary text */
+  --you: #f2c14e;         /* you */
+  --them: #8ea9d6;        /* your opponent */
+  --good: #63d291;
+  --warn: #f0a94a;
+  --bad: #ff7a6b;
+  --field: #1f4a30;       /* the field strip */
+  --chalk-rgb: 237, 241, 232;
+  --pos-qb: #ff8b7b; --pos-rb: #63d291; --pos-wr: #79b8ff;
+  --pos-te: #f0a94a; --pos-k: #c3a8ff; --pos-dst: #a9b7ae;
   --cond: 'Barlow Condensed', 'Arial Narrow', sans-serif;
   --body: 'Barlow', system-ui, -apple-system, sans-serif;
   color-scheme: dark;
 }
+
+/* Thunder Dome: the league logo's royal purple, gold and cream. */
+:root[data-theme="thunder"] {
+  --turf: #0e0718; --turf-2: #180e29; --turf-3: #231538; --line: #33234d;
+  --chalk: #f6ecd6; --dim: #a698bd;
+  --you: #f5c10b;         /* the logo's gold */
+  --them: #a78bfa;        /* royal purple, brightened to read on dark */
+  --good: #6fd69a; --warn: #ff9f50; --bad: #ff7a7a;
+  --field: #2a1752;       /* the dome's field */
+  --chalk-rgb: 246, 236, 214;
+  --pos-qb: #ff8b8b; --pos-rb: #6fd69a; --pos-wr: #7cc0ff;
+  --pos-te: #ff9f50; --pos-k: #d4b8ff; --pos-dst: #c2b6d1;
+}
+
+/* Country Club Misfits: hunter green and cream from the crest, preppy pink for
+   you, sky blue for the other guy, and a freshly mowed fairway for the field. */
+:root[data-theme="misfits"] {
+  --turf: #0a1a12; --turf-2: #10261b; --turf-3: #173324; --line: #23432f;
+  --chalk: #f4efe1; --dim: #9db5a5;
+  --you: #f7a1c4;         /* the crest's pink */
+  --them: #8fc7ff;
+  --good: #7fe0a8; --warn: #ffb547; --bad: #ff6f5e;
+  --field: #1d5236;
+  --chalk-rgb: 244, 239, 225;
+  --pos-qb: #ff8b7b; --pos-rb: #7fe0a8; --pos-wr: #8fc7ff;
+  --pos-te: #ffb547; --pos-k: #d4b8ff; --pos-dst: #b9c9bf;
+}
+:root[data-theme="misfits"] .field { background: repeating-linear-gradient(90deg, #1d5236 0 6.25%, #23603f 6.25% 12.5%); }
 * { box-sizing: border-box; }
 html { background: var(--turf); }
 body {
@@ -48,7 +80,9 @@ a { color: var(--you); }
 .bar-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .brand > div { min-width: 0; }
-.mark { width: 30px; height: 30px; flex: none; background: #380d7c; border-radius: 8px; box-shadow: inset 0 0 0 1px rgba(245, 193, 11, .35); }
+.mark { width: 30px; height: 30px; flex: none; background: var(--turf-3); border-radius: 8px; }
+.mark-img { width: 38px; height: 38px; flex: none; object-fit: contain; border-radius: 9px; }
+.mark-img[hidden], .mark[hidden] { display: none; }
 .mark path { fill: none; stroke: var(--you); stroke-width: 7; stroke-linecap: round; stroke-linejoin: round; }
 h1 { margin: 0; font: 700 22px/1 var(--cond); letter-spacing: .01em; }
 #updated { margin: 3px 0 0; font-size: 13px; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -98,11 +132,11 @@ main > h2:first-child { margin-top: 2px; }
 .field::after { right: 0; background: color-mix(in srgb, var(--them) 60%, var(--field)); }
 .field .play {   /* the 100 yards between the end zones, with a chalk line every 10 */
   position: absolute; left: 8%; right: 8%; top: 0; bottom: 0;
-  background: repeating-linear-gradient(90deg, rgba(246, 236, 214, .22) 0 1px, transparent 1px 10%);
+  background: repeating-linear-gradient(90deg, rgba(var(--chalk-rgb), .22) 0 1px, transparent 1px 10%);
 }
 .field .yd {
   position: absolute; bottom: 4px; transform: translateX(-50%);
-  font: 600 11px/1 var(--cond); color: rgba(246, 236, 214, .55);
+  font: 600 11px/1 var(--cond); color: rgba(var(--chalk-rgb), .55);
 }
 .field .los { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--you); transform: translateX(-1px); }
 .field .ball {
@@ -340,7 +374,7 @@ select {
 .chart .wk, .chart .na { font: 600 11px var(--cond); fill: var(--dim); text-anchor: middle; }
 .chart .val { font: 600 12px var(--cond); fill: var(--chalk); text-anchor: middle; }
 .chart .bar { cursor: pointer; outline: none; }
-.chart .bar.on .hit, .chart .bar:focus-visible .hit { fill: rgba(246, 236, 214, .06); }
+.chart .bar.on .hit, .chart .bar:focus-visible .hit { fill: rgba(var(--chalk-rgb), .06); }
 .chart .bar.on .wk { fill: var(--chalk); }
 .readout { font-size: 14px; color: var(--dim); margin: 6px 0 0; min-height: 1.4em; }
 

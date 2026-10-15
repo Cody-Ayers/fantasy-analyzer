@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" aria-hidden="true">
+  <!-- Small Country Club Misfits badge for the header: the crest's shield
+       with a crooked M, because the full crest is too detailed at this size. -->
+  <path d="M32 3 C23 3 13 5 6 8 V33 C6 47 17 56 32 62 C47 56 58 47 58 33 V8 C51 5 41 3 32 3 Z" fill="#f4efe1"/>
+  <path d="M32 7 C24 7 16 9 10 11 V33 C10 45 19 52 32 57 C45 52 54 45 54 33 V11 C48 9 40 7 32 7 Z" fill="#0f2d20"/>
+  <path d="M32 7 C24 7 16 9 10 11 V33 C10 45 19 52 32 57 C45 52 54 45 54 33 V11 C48 9 40 7 32 7 Z" fill="none" stroke="#f7a1c4" stroke-width="1.6"/>
+  <g transform="rotate(-9 32 32)">
+    <text x="32" y="43" font-family="Georgia, 'Times New Roman', serif" font-size="32" font-weight="700" fill="#f7a1c4" text-anchor="middle">M</text>
+  </g>
+</svg>

@@ -58,7 +58,8 @@ for (const id of config.leagues) {
   } catch (e) {
     console.warn(`  history skipped: ${e.message}`);
   }
-  index.push({ id, name: snap.league.name, week: snap.week, fetchedAt: snap.fetchedAt });
+  const theme = (config.themes || {})[id];   // optional look for this league, see leagues.json
+  index.push({ id, name: snap.league.name, week: snap.week, fetchedAt: snap.fetchedAt, ...(theme ? { theme } : {}) });
   console.log(`✓ ${snap.league.name}: week ${snap.week}, ${snap.players.length} players`);
 }
 writeFileSync('site/data/leagues.json', JSON.stringify(index, null, 2));
