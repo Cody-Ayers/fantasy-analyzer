@@ -49,17 +49,19 @@ jobs:
           SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
         run: node scripts/alerts.mjs
 
-      - name: Remember which alerts were sent
-        run: |
-          git config user.name "lineup-lab-bot"
-          git config user.email "lineup-lab-bot@users.noreply.github.com"
-          git add -A state
-          git diff --cached --quiet && exit 0
-          git commit -m "Remember sent alerts"
-          git pull --rebase -q && git push
-
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
       - uses: actions/deploy-pages@v4
+
+      # Last, so a problem saving this can never stop the site from updating.
+      - name: Remember which alerts were sent
+        run: |
+          git config user.name "lineup-lab-bot"
+          git config user.email "lineup-lab-bot@users.noreply.github.com"
+          [ -d state ] || exit 0           # nothing to remember (alerts are off)
+          git add -A state
+          git diff --cached --quiet && exit 0
+          git commit -m "Remember sent alerts"
+          git pull --rebase -q && git push
