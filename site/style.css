@@ -453,3 +453,25 @@ details.opp[open] summary::after { content: 'Hide'; }
 .wpri { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; background: var(--turf-2); border-radius: 14px; padding: 12px 14px; margin: 4px 0 6px; font-size: 15px; }
 .wpri .n { font-size: 34px; font-weight: 700; color: var(--you); line-height: 1; }
 .wpri p { margin: 3px 0 0; font-size: 13px; color: var(--dim); }
+
+/* ---------- compact waivers ---------- */
+/* Badges stay on one line; on a narrow screen the row scrolls sideways. */
+.signals { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.signals::-webkit-scrollbar { display: none; }
+.signal { white-space: nowrap; flex: none; }
+.drop.shared { margin: 0 0 10px; }
+/* Pickups after the top 3: one row, tap to open the full card. */
+details.move.more { padding: 10px 14px; }
+details.move.more > summary { list-style: none; cursor: pointer; }
+details.move.more > summary::-webkit-details-marker { display: none; }
+details.move.more .gain { font-size: 24px; }
+details.move.more:not([open]) .gain small::after { content: ' ▾'; }
+details.move.more[open] { padding: 14px; }
+/* Slightly tighter player rows. */
+.row { padding: 9px 0; }
+.signal { font-size: 12px; padding: 3px 8px; }
+.signals { gap: 5px; }
+details.more-rows > summary { list-style: none; cursor: pointer; padding: 10px 0 2px; border-top: 1px solid var(--line); font-size: 14px; font-weight: 600; color: var(--you); }
+details.more-rows > summary::-webkit-details-marker { display: none; }
+details.more-rows > summary::after { content: ' ▾'; }
+details.more-rows[open] > summary { display: none; }

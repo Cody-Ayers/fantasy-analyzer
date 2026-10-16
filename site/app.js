@@ -50,8 +50,8 @@ const espnBtn = (url, label) => `<a class="espn-btn" href="${url}" target="_blan
 // Every player name is a button that opens his panel (see player.js).
 const nameBtn = (p) => `<button type="button" class="plink" data-pid="${p.id}">${esc(p.n)}</button>`;
 const pos = (p) => `<span class="pos ${p.p}">${p.p === 'DST' ? 'D/ST' : p.p}</span>`;
-function meta(p, bits) {
-  return `<div class="meta">${pos(p)}${bits.filter(Boolean).map((b) => `<span>${b}</span>`).join('')}</div>`;
+function meta(p, bits, showPos = true) {
+  return `<div class="meta">${showPos ? pos(p) : ''}${bits.filter(Boolean).map((b) => `<span>${b}</span>`).join('')}</div>`;
 }
 const expertRank = (p) => (p.er ? `Experts rank him ${p.p === 'DST' ? 'D/ST' : p.p}${p.er}` : '');
 
@@ -64,7 +64,7 @@ function playerRow(slot, p, value, opts = {}) {
   return `<li class="row ${opts.change ? 'change' : ''} ${st !== 'pre' ? 'locked' : ''}">
     <span class="slot">${slot}</span>
     <div><div class="pname">${nameBtn(p)} ${flags(p, (opts.change ? '<span class="flag START">START</span>' : '') + live)}</div>
-      ${meta(p, [game(p), `${f1(p.avg)} avg`, p.er ? `${p.p === 'DST' ? 'D/ST' : p.p}${p.er} by experts` : ''])}</div>
+      ${meta(p, [game(p), `${f1(p.avg)} avg`, p.er ? `exp. ${p.p === 'DST' ? 'D/ST' : p.p}${p.er}` : ''], !(slot === p.p || (slot === 'DST' && p.p === 'DST')))}</div>
     <div class="pts ${opts.up ? 'up' : ''}">${f1(value)}<small>${opts.label || 'proj'}</small></div></li>`;
 }
 
@@ -205,10 +205,12 @@ function irSection(s) {
 // ---------- Waivers ----------
 function signals(p) {
   const out = [];
-  if (p.er) out.push(`Experts: <b>${p.p === 'DST' ? 'D/ST' : p.p}${p.er}</b> this week`);
-  if (p.sl) out.push(`Sleeper: <b>#${p.sl}</b> most added`);
-  if (p.tr >= 1) out.push(`ESPN ownership <b class="good">up ${p.tr}%</b>`);
-  if (p.tr <= -1) out.push(`ESPN ownership <b class="bad">down ${Math.abs(p.tr)}%</b>`);
+  // Kept short so they fit on one line: expert rank this week, Sleeper's
+  // most-added rank (48 hours), and the change in ESPN ownership this week.
+  if (p.er) out.push(`Experts <b>${p.p === 'DST' ? 'D/ST' : p.p}${p.er}</b>`);
+  if (p.sl) out.push(`Sleeper adds <b>#${p.sl}</b>`);
+  if (p.tr >= 1) out.push(`Owned <b class="good">+${p.tr}%</b>`);
+  if (p.tr <= -1) out.push(`Owned <b class="bad">−${Math.abs(p.tr)}%</b>`);
   return out.length ? `<div class="signals">${out.map((x) => `<span class="signal">${x}</span>`).join('')}</div>` : '';
 }
 const take = (p) => (p.ol ? `<details class="take"><summary>ESPN analyst take</summary><p>${esc(p.ol)}${p.ol.length >= 400 ? '…' : ''}</p></details>` : '');
@@ -235,6 +237,9 @@ function availableSection(s) {
     .starters.filter((x) => x.p && x.p.p === av.pos);
   const weakest = mine.length ? mine.reduce((a, b) => (a.v < b.v ? a : b)) : null;
 
+  // Kickers and defenses are usually streamed week to week, so compare this week too.
+  const myStream = ['K', 'DST'].includes(av.pos) ? A.streamers(s, av.pos).mine : null;
+  const streamNote = myStream ? ` Streaming? Yours this week: <b>${esc(myStream.n)}</b>, ${f1(myStream.pw)} projected. Switch to <b>This week</b> to sort by it.` : '';
   const posBtn = (k) => `<button type="button" data-apos="${k}" class="${av.pos === k ? 'on' : ''}" aria-pressed="${av.pos === k}">${k === 'DST' ? 'D/ST' : k}</button>`;
   const sortBtn = (k, label) => `<button type="button" data-asort="${k}" class="${av.sort === k ? 'on' : ''}" aria-pressed="${av.sort === k}">${label}</button>`;
   const rows = list.map((p, i) => {
@@ -243,13 +248,13 @@ function availableSection(s) {
     return `<li class="row arow">
       <span class="slot">${i + 1}</span>
       <div><div class="pname">${nameBtn(p)} ${flags(p, upgrade ? '<span class="flag START">UPGRADE</span>' : '')}</div>
-        ${meta(p, [game(p), `${Math.round(p.own)}% owned`, trend && `${trend} this week`, p.er ? `${p.p === 'DST' ? 'D/ST' : p.p}${p.er} by experts` : '', p.fa === 'W' ? 'waivers' : 'free agent'])}</div>
+        ${meta(p, [game(p), `${Math.round(p.own)}% owned`, trend, p.er ? `exp. ${p.p === 'DST' ? 'D/ST' : p.p}${p.er}` : '', p.fa === 'W' ? 'waivers' : 'free agent'], false)}</div>
       <div class="pts">${f1(value(p))}<small>${av.sort === 'week' ? 'this week' : 'per game'}</small><small class="sub">${f1(other(p))} ${av.sort === 'week' ? 'ROS' : 'this wk'}</small></div></li>`;
   }).join('');
 
   return `
   <h2 class="h-espn">Available players ${espnBtn(espnUrl.players(), 'ESPN players')}</h2>
-  <p class="explain">The top 15 free agents and waiver players at each position. <b>UPGRADE</b> means he projects better the rest of the season than your weakest starter there${weakest ? ` (${esc(weakest.p.n)}, ${f1(weakest.v)} a game)` : ''}.</p>
+  <p class="explain">The top 15 free agents and waiver players at each position. <b>UPGRADE</b> means he projects better the rest of the season than your weakest starter there${weakest ? ` (${esc(weakest.p.n)}, ${f1(weakest.v)} a game)` : ''}.${streamNote}</p>
   <div class="avail-controls">
     <div class="seg pos-seg" role="group" aria-label="Position">${AV_POS.map(posBtn).join('')}</div>
     <div class="seg sort-seg" role="group" aria-label="Sort by">${sortBtn('ros', 'Rest of season')}${sortBtn('week', 'This week')}</div>
@@ -274,22 +279,30 @@ function renderWaivers() {
   const s = state.snap;
   const picks = state.cache.waivers ??= A.waiverTargets(s);
   const weeksLeft = A.remainingWeeks(s).length;
-  const cards = picks.map((x) => `
-    <div class="move">
+  // When every pickup assumes the same drop, say it once instead of on every card.
+  const drops0 = picks.map((x) => x.drop?.id ?? 0);
+  const sameDrop = picks.length > 1 && picks[0].drop && drops0.every((d) => d === drops0[0]) ? picks[0] : null;
+  const dropBox = (x) => (sameDrop ? '' : `<div class="drop">${x.drop
+    ? `Drop <b>${esc(x.drop.n)}</b>${altLine(x)}`
+    : 'No drop needed. He goes in your open roster spot.'}</div>`);
+  const head = (x) => `
       <div class="move-head">
         <div><div class="pname">${nameBtn(x.p)} ${flags(x.p)}</div>
           ${meta(x.p, [game(x.p), `${f1(x.p.avg)} avg`, `${Math.round(x.p.own)}% owned`])}</div>
         <div class="gain">${sign(x.perWeek)}<small>per week</small></div>
-      </div>
+      </div>`;
+  const body = (x) => `
       <p class="why">${esc(x.why)}. <span class="dim">This week ${sign(x.weekGain)}.</span></p>
-      <div class="drop">${x.drop
-        ? `Drop <b>${esc(x.drop.n)}</b>${altLine(x)}`
-        : 'No drop needed. He goes in your open roster spot.'}</div>
+      ${dropBox(x)}
       ${signals(x.p)}
       ${take(x.p)}
-      <div class="espn-row"><span class="status">${x.p.fa === 'W' ? 'On waivers, so you need to put in a claim.' : 'Free agent, so you can add him now.'}</span>
-        ${espnBtn(espnUrl.players(), x.p.fa === 'W' ? 'Claim in ESPN' : 'Add in ESPN')}</div>
-    </div>`).join('');
+      <div class="espn-row"><span class="status">${x.p.fa === 'W' ? 'On waivers: put in a claim.' : 'Free agent: add him now.'}</span>
+        ${espnBtn(espnUrl.players(), x.p.fa === 'W' ? 'Claim in ESPN' : 'Add in ESPN')}</div>`;
+  // The top 3 in full; the rest as one-line rows you can tap open.
+  const TOP = 3;
+  const cards = picks.slice(0, TOP).map((x) => `<div class="move">${head(x)}${body(x)}</div>`).join('')
+    + picks.slice(TOP).map((x) => `<details class="move more"><summary>${head(x)}</summary>${body(x)}</details>`).join('');
+  const sharedDrop = sameDrop ? `<div class="drop shared">Each pickup assumes you drop <b>${esc(sameDrop.drop.n)}</b>${altLine(sameDrop)}</div>` : '';
 
   const VERDICT = { swap: 'Upgrade', safe: 'Safe drop', depth: 'Small loss', keep: 'Keep' };
   const drops = state.cache.drops ??= A.dropCosts(s);
@@ -302,31 +315,21 @@ function renderWaivers() {
       <div><div class="pname">${nameBtn(d.p)} ${flags(d.p)}</div>
         ${meta(d.p, [sub, ...d.signals.map(esc)])}</div>
       <div class="pts">${f1(A.rosPPG(d.p))}<small>per game</small></div></li>`;
-  }).join('');
-
-  const stream = (position) => {
-    const { mine, list: opts } = A.streamers(s, position);
-    const base = mine ? mine.pw : 0;
-    return `<div class="sheetbox"><ul class="rows">
-      ${mine ? playerRow('You', mine, mine.pw) : ''}
-      ${opts.map((p) => playerRow('', p, p.pw, { up: p.pw > base, label: p.pw > base ? sign(p.pw - base) : 'proj' })).join('')}
-    </ul></div>`;
-  };
+  });
 
   return `
   ${waiverPriority(s)}
   <h2>Best pickups</h2>
   <p class="explain">Each free agent is tried on your roster. We add him, drop whoever hurts least, and re-run your best lineup for all ${weeksLeft} remaining weeks, playoffs included.</p>
+  ${sharedDrop}
   ${cards || '<div class="sheetbox empty">No free agent makes your team better right now.</div>'}
 
   ${availableSection(s)}
 
   <h2>Who to drop</h2>
   <p class="explain">Safest drop first. Each player is measured against the best free agent at his position, so a kicker you can replace off waivers counts as cheap even if he starts.</p>
-  <div class="sheetbox"><ul class="rows">${dropRows}</ul></div>
-
-  <h2 class="h-espn">Stream a defense ${espnBtn(espnUrl.players(), 'ESPN players')}</h2>${stream('DST')}
-  <h2>Stream a kicker</h2>${stream('K')}`;
+  <div class="sheetbox"><ul class="rows">${dropRows.slice(0, 5).join('')}</ul>${dropRows.length > 5
+    ? `<details class="more-rows"><summary>Show all ${dropRows.length}</summary><ul class="rows">${dropRows.slice(5).join('')}</ul></details>` : ''}</div>`;
 }
 
 // ---------- Trades ----------
@@ -646,7 +649,7 @@ function render() {
   const ago = Math.max(0, Math.round((Date.now() - new Date(s.fetchedAt)) / 60000));
   const when = ago < 1 ? 'just now' : ago < 60 ? `${ago} min ago` : ago < 1440 ? `${Math.round(ago / 60)} hr ago` : `${Math.round(ago / 1440)} days ago`;
   const scoring = s.league.ppr === 1 ? 'PPR' : s.league.ppr ? `${s.league.ppr} PPR` : 'standard';
-  $('#updated').textContent = `Week ${s.week}, ${scoring}, updated ${when}`;
+  $('#updated').textContent = `Week ${s.week} · ${scoring} · ${when === 'just now' ? 'updated just now' : when}`;
   $('#view').innerHTML = staleBanner(ago) + RENDER[state.tab]() + '<p class="foot">Projections, rankings and analyst notes from ESPN. Trending adds from Sleeper.</p>';
 }
 
@@ -715,7 +718,7 @@ async function init() {
   });
   $('#view').addEventListener('click', (e) => {
     const link = e.target.closest('.plink');
-    if (link) { showPlayer(+link.dataset.pid); return; }
+    if (link) { e.preventDefault(); showPlayer(+link.dataset.pid); return; }
     const ap = e.target.closest('[data-apos], [data-asort]');
     if (ap) {
       if (ap.dataset.apos) { state.avail.pos = ap.dataset.apos; store.set('availPos', ap.dataset.apos); }
