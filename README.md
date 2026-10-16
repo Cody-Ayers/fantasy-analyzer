@@ -123,6 +123,11 @@ keep a secret, so the first time you tap it, it asks for a GitHub token:
 The token is saved only in that browser (`localStorage`) and only sent to
 `api.github.com` (see `site/refresh.js`). Do it once per device.
 
+**Live updates on game day.** GitHub's schedule often runs late or skips runs when
+it's busy, so once a token is saved, the app also refreshes itself every 10 minutes
+while it's open during games (from 90 minutes before a kickoff until the game ends).
+It skips a refresh if one is already running, and stops when you close the app.
+
 ## Privacy
 
 On a free GitHub plan, the repo and the site are public. Anyone with the link can

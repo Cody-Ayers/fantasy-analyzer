@@ -513,23 +513,31 @@ function openSetup() {
   d.showModal();
 }
 
-async function refresh() {
+// quiet = started automatically on game day: no toasts unless the token stops working.
+async function refresh({ quiet = false } = {}) {
   if (!repo) { toast('Refresh works on the published site, not a local copy.'); return; }
   const tok = R.token.get();
-  if (!tok) { openSetup(); return; }
-  setButton('busy', 'Starting');
+  if (!tok) { if (!quiet) openSetup(); return; }
+  const label = (step) => (quiet ? 'Live update' : step);
+  setButton('busy', label('Starting'));
   try {
-    await R.runRefresh(repo, tok, (step) => setButton('busy', step));
+    await R.runRefresh(repo, tok, (step) => setButton('busy', label(step)));
     setButton('busy', 'Loading');
+    const y = window.scrollY;
     await loadIndex(true);
     await loadLeague(state.leagueId, true);
+    if (quiet) window.scrollTo(0, y);
     setButton('done', 'Updated');
-    toast('Fresh data from ESPN is loaded.');
+    if (!quiet) toast('Fresh data from ESPN is loaded.');
     setTimeout(() => setButton('', 'Refresh'), 4000);
   } catch (e) {
     setButton('', 'Refresh');
-    if (e.badToken) R.token.clear();
-    toast(`${esc(e.message)}${e.url ? ` <a href="${e.url}" target="_blank" rel="noopener">Open GitHub</a>` : ''}`, 9000);
+    if (e.badToken) {
+      R.token.clear();
+      toast(`${quiet ? 'Live updates paused: ' : ''}${esc(e.message)}`, 9000);
+    } else if (!quiet) {
+      toast(`${esc(e.message)}${e.url ? ` <a href="${e.url}" target="_blank" rel="noopener">Open GitHub</a>` : ''}`, 9000);
+    }
   }
 }
 
@@ -574,12 +582,32 @@ function staleBanner(minutesOld) {
 }
 
 // ---------- game-day updates ----------
-// While games are being played (or whenever you come back to the app), check
-// for newer data and reload quietly, keeping your tab and scroll position.
-function gamesInProgress() {
+// GitHub's schedule is supposed to refresh every 15 minutes during games, but it
+// often runs late or skips runs when GitHub is busy. So while Lineup Lab is open
+// on game day (from 90 minutes before a kickoff, when inactives come out, until
+// the game ends), the app starts a refresh itself every 10 minutes using your
+// Refresh token. It stops when you close or leave the app, and does nothing if
+// no token is saved on this device.
+const LIVE_EVERY = 10 * 60e3;
+let lastLive = 0;
+
+function gamesInProgress(before = 0) {
   const now = Date.now();
-  return Object.values(state.snap?.proTeams || {}).some((t) => t.kick && now >= t.kick && now < t.kick + 4 * 3600e3 && !t.final);
+  return Object.values(state.snap?.proTeams || {}).some((t) => t.kick && now >= t.kick - before && now < t.kick + 4 * 3600e3 && !t.final);
 }
+async function liveRefresh() {
+  if (!repo || document.hidden || !state.snap || $('#refresh').disabled) return;
+  if (!gamesInProgress(90 * 60e3)) return;
+  const tok = R.token.get();
+  if (!tok) return;
+  const now = Date.now();
+  if (now - new Date(state.snap.fetchedAt) < LIVE_EVERY || now - lastLive < LIVE_EVERY) return;
+  lastLive = now;
+  try { if (await R.refreshRunning(repo, tok)) return; } catch { return; }   // one is already on the way
+  await refresh({ quiet: true });
+}
+// Between refreshes, pick up new data from any source (the schedule, another
+// device) and reload quietly, keeping your tab and scroll position.
 async function checkForNewData() {
   if (document.hidden || !state.snap || $('#refresh').disabled) return;
   try {
@@ -597,7 +625,13 @@ async function checkForNewData() {
 }
 function startGameDayUpdates() {
   setInterval(() => { if (gamesInProgress()) checkForNewData(); }, 3 * 60 * 1000);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForNewData(); });
+  setInterval(liveRefresh, 60 * 1000);
+  document.addEventListener('visibilitychange', async () => {
+    if (document.hidden) return;
+    await checkForNewData();
+    liveRefresh();
+  });
+  liveRefresh();
 }
 
 // ---------- wiring ----------
@@ -691,7 +725,7 @@ async function init() {
     set.has(id) ? set.delete(id) : set.add(id);
     const y = window.scrollY; render(); window.scrollTo(0, y);
   });
-  $('#refresh').addEventListener('click', refresh);
+  $('#refresh').addEventListener('click', () => refresh());
   $('#setup').addEventListener('close', () => {
     const d = $('#setup');
     const v = $('#tokenInput').value.trim();

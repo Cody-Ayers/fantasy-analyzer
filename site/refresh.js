@@ -44,6 +44,17 @@ async function gh(path, tok, init = {}) {
   return res.status === 204 ? null : res.json();
 }
 
+// Is a refresh already queued or running (from another phone, the schedule, a push)?
+// Used by the automatic game-day refresh so it never piles up duplicate runs.
+export async function refreshRunning(repo, tok) {
+  const base = `/repos/${repo.owner}/${repo.repo}/actions/workflows/${WORKFLOW}`;
+  for (const status of ['queued', 'in_progress']) {
+    const { total_count: n } = await gh(`${base}/runs?status=${status}&per_page=1`, tok);
+    if (n) return true;
+  }
+  return false;
+}
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // Start the workflow and report progress through onStep(text) until it finishes.
