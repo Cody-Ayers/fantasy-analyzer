@@ -32,6 +32,9 @@ function alert(key, title, message, priority = 'default', tags = 'football') {
   queue.push({ title, message, priority, tags });
 }
 
+// The first time alerts run, say hello so you know the setup works.
+alert('welcome', 'Lineup Lab alerts are on', 'You\'ll get a heads-up here when a starter is ruled out, your lineup needs a fix before kickoff, or a trade offer arrives.', 'default', 'white_check_mark');
+
 for (const { id, name } of index) {
   const snap = JSON.parse(readFileSync(`site/data/${id}.json`, 'utf8'));
   if (!snap.me) continue;
