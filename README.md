@@ -25,7 +25,7 @@ ESPN API ──► scripts/fetch.mjs ──► site/data/*.json ──► site/ 
 ```
 
 1. **Fetch.** `scripts/espn.js` calls the same data API ESPN's own website uses. Private leagues need your two login cookies, `espn_s2` and `SWID`. The response is about 4.5 MB per league, and the script keeps only what the analysis needs, about 50 KB.
-2. **Store.** Each league becomes one snapshot file: `site/data/<leagueId>.json`.
+2. **Store.** Each league becomes one snapshot file, `site/data/<leagueId>.json`, published with the site. The files aren't saved in the repo; every refresh builds them fresh.
 3. **Analyze.** `site/analysis.js` runs in your browser. Everything is built on one idea:
    - `bestLineup()` picks the highest-scoring legal lineup from a roster.
    - A roster's **value** = its best lineup's points, summed over every remaining week (byes count as 0).
@@ -105,8 +105,7 @@ Add two secrets:
 
 ### 6. Run it
 **Actions → Refresh leagues and publish → Run workflow**. In about a minute your
-site is live at `https://YOUR-USERNAME.github.io/fantasy-analyzer/`. The first run
-also removes the original leagues' data from your copy.
+site is live at `https://YOUR-USERNAME.github.io/fantasy-analyzer/`.
 
 On your iPhone, open the site in Safari and choose **Share → Add to Home Screen**.
 From then on it refreshes itself every morning, plus Sunday before kickoff.
@@ -123,10 +122,11 @@ keep a secret, so the first time you tap it, it asks for a GitHub token:
 The token is saved only in that browser (`localStorage`) and only sent to
 `api.github.com` (see `site/refresh.js`). Do it once per device.
 
-**Live updates on game day.** GitHub's schedule often runs late or skips runs when
-it's busy, so once a token is saved, the app also refreshes itself every 10 minutes
-while it's open during games (from 90 minutes before a kickoff until the game ends).
-It skips a refresh if one is already running, and stops when you close the app.
+**Automatic updates.** GitHub's schedule often runs late or skips runs when it's
+busy, so once a token is saved, the open app also refreshes itself: every 10 minutes
+during games (from 90 minutes before a kickoff until the game ends), and any other
+time the data is more than 3 hours old. It skips a refresh if one is already running,
+and stops when you close the app.
 
 ## Privacy
 
@@ -140,11 +140,10 @@ names, only team names.
 ```bash
 git clone https://github.com/YOUR-USERNAME/fantasy-analyzer.git
 cd fantasy-analyzer
+ESPN_S2=... SWID=... node scripts/fetch.mjs   # the data isn't in the repo, so fetch it first
 python3 -m http.server 8000 -d site
 # open http://localhost:8000
 ```
-
-To refresh the data locally: `ESPN_S2=... SWID=... node scripts/fetch.mjs`
 
 ## Ideas for later
 - Tune the model: the numbers at the top of `site/analysis.js` (`INJURY_KEEP`, `SD_SHARE`) and the 65/35 blend in `rosPPG()`.
@@ -157,7 +156,7 @@ Lineup Lab can send a push notification to your phone when a starter is ruled ou
 3. In the ntfy app, tap **+** and subscribe to that topic.
 4. In your repo: **Settings → Secrets and variables → Actions → New repository secret**, name `NTFY_TOPIC`, value your topic name.
 
-Alerts are checked after every refresh, and each one is sent only once (`site/data/alerts-state.json` remembers what was sent). Test the wording without sending anything: `ALERTS_DRY_RUN=1 node scripts/alerts.mjs`.
+Alerts are checked after every refresh, and each one is sent only once (`state/alerts-sent.json` remembers what was sent). Test the wording without sending anything: `ALERTS_DRY_RUN=1 node scripts/alerts.mjs`.
 
 ### League looks
 Each league can have its own colors and header logo. In `leagues.json`, `themes` maps a league ID to a look:

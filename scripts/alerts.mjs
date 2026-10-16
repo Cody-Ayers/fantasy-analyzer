@@ -8,13 +8,15 @@
 //
 // Test without sending: ALERTS_DRY_RUN=1 node scripts/alerts.mjs
 
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import * as A from '../site/analysis.js';
 
 const { NTFY_TOPIC, ALERTS_DRY_RUN, SITE_URL } = process.env;
 if (!NTFY_TOPIC && !ALERTS_DRY_RUN) process.exit(0);   // alerts are optional
 
-const STATE = 'site/data/alerts-state.json';           // which alerts were already sent
+// Which alerts were already sent. Kept in the repo (not the published site) so
+// it survives from one refresh to the next.
+const STATE = 'state/alerts-sent.json';
 const sent = new Set(existsSync(STATE) ? JSON.parse(readFileSync(STATE, 'utf8')) : []);
 const index = JSON.parse(readFileSync('site/data/leagues.json', 'utf8'));
 const now = Date.now();
@@ -91,4 +93,7 @@ for (const a of queue) {
 }
 if (!queue.length) console.log('No new alerts.');
 // Remember what was sent (keep the list from growing forever).
-if (!ALERTS_DRY_RUN) writeFileSync(STATE, JSON.stringify([...sent].slice(-400)));
+if (!ALERTS_DRY_RUN) {
+  mkdirSync('state', { recursive: true });
+  writeFileSync(STATE, JSON.stringify([...sent].slice(-400)));
+}

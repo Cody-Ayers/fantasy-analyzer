@@ -518,7 +518,7 @@ async function refresh({ quiet = false } = {}) {
   if (!repo) { toast('Refresh works on the published site, not a local copy.'); return; }
   const tok = R.token.get();
   if (!tok) { if (!quiet) openSetup(); return; }
-  const label = (step) => (quiet ? 'Live update' : step);
+  const label = (step) => (quiet ? 'Updating' : step);
   setButton('busy', label('Starting'));
   try {
     await R.runRefresh(repo, tok, (step) => setButton('busy', label(step)));
@@ -581,14 +581,17 @@ function staleBanner(minutesOld) {
     <p>The usual cause is expired ESPN cookies. Copy new <i>espn_s2</i> and <i>SWID</i> values from Chrome${fixUrl ? ` into <a href="${fixUrl}" target="_blank" rel="noopener">your GitHub secrets</a>` : ' into your GitHub secrets'}, then tap Refresh.${runsUrl ? ` <a href="${runsUrl}" target="_blank" rel="noopener">See the failed runs</a>.` : ''}</p></div>`;
 }
 
-// ---------- game-day updates ----------
-// GitHub's schedule is supposed to refresh every 15 minutes during games, but it
-// often runs late or skips runs when GitHub is busy. So while Lineup Lab is open
-// on game day (from 90 minutes before a kickoff, when inactives come out, until
-// the game ends), the app starts a refresh itself every 10 minutes using your
-// Refresh token. It stops when you close or leave the app, and does nothing if
-// no token is saved on this device.
+// ---------- automatic updates ----------
+// GitHub's schedule often runs late or skips runs when GitHub is busy. So while
+// Lineup Lab is open, it starts a refresh itself (using your Refresh token) when
+// the data is getting old:
+//   - during games (from 90 minutes before a kickoff, when inactives come out,
+//     until the game ends): every 10 minutes
+//   - any other time: when the data is more than 3 hours old
+// It stops when you close or leave the app, and does nothing if no token is
+// saved on this device.
 const LIVE_EVERY = 10 * 60e3;
+const QUIET_EVERY = 3 * 3600e3;
 let lastLive = 0;
 
 function gamesInProgress(before = 0) {
@@ -597,11 +600,11 @@ function gamesInProgress(before = 0) {
 }
 async function liveRefresh() {
   if (!repo || document.hidden || !state.snap || $('#refresh').disabled) return;
-  if (!gamesInProgress(90 * 60e3)) return;
   const tok = R.token.get();
   if (!tok) return;
   const now = Date.now();
-  if (now - new Date(state.snap.fetchedAt) < LIVE_EVERY || now - lastLive < LIVE_EVERY) return;
+  const every = gamesInProgress(90 * 60e3) ? LIVE_EVERY : QUIET_EVERY;
+  if (now - new Date(state.snap.fetchedAt) < every || now - lastLive < LIVE_EVERY) return;
   lastLive = now;
   try { if (await R.refreshRunning(repo, tok)) return; } catch { return; }   // one is already on the way
   await refresh({ quiet: true });
