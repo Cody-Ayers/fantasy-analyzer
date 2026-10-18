@@ -16,6 +16,7 @@ below. It takes about 10 minutes and needs only a free GitHub account.
 - **League:** standings, all-play record, luck, and playoff odds from 5,000 simulated seasons
 - **Player panel:** tap any name for snap share, consistency, upcoming matchups and expert rankings
 - **Refresh button** to pull new data on demand, plus automatic daily updates
+- **Score ticker:** every NFL game this week, live from ESPN's public scoreboard, with how many of your starters (and your opponent's) are in each
 
 ## How it works
 
@@ -41,6 +42,7 @@ ESPN API ──► scripts/fetch.mjs ──► site/data/*.json ──► site/ 
 | `site/app.js` | Draws the page |
 | `scripts/history.js` | Week-by-week points, projections and stats (ESPN) plus snap counts (Sleeper) for the player panel |
 | `site/player.js` | The player panel that opens when you tap a name |
+| `site/ticker.js` | The score ticker under the header (reads ESPN's public scoreboard straight from your phone) |
 | `site/refresh.js` | The Refresh button: starts the workflow through GitHub's API and waits for it |
 | `.github/workflows/refresh.yml` | Tells GitHub to refresh the data and republish the site on a schedule |
 

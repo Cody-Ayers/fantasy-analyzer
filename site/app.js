@@ -2,6 +2,7 @@
 import * as A from './analysis.js';
 import * as R from './refresh.js';
 import { openPlayer, loadHistory } from './player.js';
+import { startTicker, redrawTicker } from './ticker.js';
 
 const state = { leagues: [], snap: null, tab: 'team', cache: {}, leagueId: null };
 const $ = (sel) => document.querySelector(sel);
@@ -698,6 +699,7 @@ async function loadLeague(id, fresh = false) {
   store.set('league', id);
   document.querySelectorAll('#leagues button').forEach((b) => b.classList.toggle('on', b.dataset.id === String(id)));
   render();
+  redrawTicker();
 }
 
 async function init() {
@@ -741,4 +743,16 @@ async function init() {
   const saved = store.get('league');
   await loadLeague(state.leagues.some((l) => String(l.id) === saved) ? saved : state.leagues[0].id);
 }
-init().then(startGameDayUpdates);
+// Your starters and your opponent's, so the score ticker can show who's in each game.
+function tickerContext() {
+  const s = state.snap;
+  if (!s?.me) return null;
+  const starters = (id) => A.rosterOf(s, id).filter((p) => !['BE', 'IR'].includes(p.s));
+  const oppId = A.thisWeek(s).oppId;
+  return { mine: starters(s.me), theirs: oppId ? starters(oppId) : [] };
+}
+
+init().then(() => {
+  startTicker($('#ticker'), tickerContext);
+  startGameDayUpdates();
+});

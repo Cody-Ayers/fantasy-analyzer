@@ -475,3 +475,25 @@ details.more-rows > summary { list-style: none; cursor: pointer; padding: 10px 0
 details.more-rows > summary::-webkit-details-marker { display: none; }
 details.more-rows > summary::after { content: ' ▾'; }
 details.more-rows[open] > summary { display: none; }
+
+/* ---------- score ticker ---------- */
+.ticker { margin: 8px -16px -4px; }
+.ticker ul { display: flex; gap: 6px; margin: 0; padding: 0 16px 2px; list-style: none; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; }
+.ticker ul::-webkit-scrollbar { display: none; }
+.tk { flex: none; min-width: 92px; padding: 5px 9px 4px; border-radius: 10px; background: var(--turf-2); border: 1px solid var(--line); scroll-snap-align: start; font-size: 13px; }
+.tk.has-me { border-color: color-mix(in srgb, var(--you) 45%, var(--line)); }
+.tk.in.rz { box-shadow: inset 0 -2px 0 var(--bad); }
+.tk-teams { display: grid; gap: 1px; }
+.tk-team { display: flex; justify-content: space-between; gap: 10px; font: 600 14px/1.15 var(--cond); letter-spacing: .02em; color: var(--chalk); }
+.tk-team b { font-weight: 700; }
+.tk.post .tk-team { color: var(--dim); }
+.tk.post .tk-team.won { color: var(--chalk); }
+.tk-ab { display: inline-flex; align-items: center; gap: 4px; }
+.tk-ball { width: 7px; height: 5px; border-radius: 50%; background: var(--warn); display: inline-block; }
+.tk-foot { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-top: 2px; font-size: 11px; color: var(--dim); white-space: nowrap; }
+.tk.in .tk-when { color: var(--good); font-weight: 600; }
+.tk-when em { font-style: normal; color: var(--bad); }
+.tk-dots { display: inline-flex; gap: 3px; }
+.tk-me, .tk-opp { min-width: 15px; height: 15px; padding: 0 3px; border-radius: 8px; display: inline-grid; place-items: center; font: 700 10px/1 var(--body); color: var(--turf); }
+.tk-me { background: var(--you); }
+.tk-opp { background: var(--them); }
