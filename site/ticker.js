@@ -5,6 +5,7 @@
 //
 // Each game shows how many of your starters (gold) and your opponent's starters
 // (their color) are playing in it. Live games come first, then upcoming, then final.
+// Tap a game to see exactly who's in it and what they've scored.
 
 const FEED = 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard';
 const LIVE_MS = 30e3;
@@ -14,6 +15,7 @@ let games = [];
 let timer = null;
 let el = null;
 let getContext = () => null;
+let openId = null;   // the game whose details are showing
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -35,7 +37,7 @@ function parse(feed) {
       home: side('home'),
       poss: sit.possession ? Number(sit.possession) : null,
       redZone: !!sit.isRedZone,
-      down: sit.shortDownDistanceText || '',
+      down: sit.shortDownDistanceText || sit.downDistanceText || '',
     };
   });
 }
@@ -61,10 +63,34 @@ function chip(g, ctx) {
       ${showScore ? `<b>${esc(t.score)}</b>` : ''}</span>`;
   const dots = (mine ? `<span class="tk-me" title="Your starters">${mine}</span>` : '')
     + (theirs ? `<span class="tk-opp" title="Opponent's starters">${theirs}</span>` : '');
-  return `<li class="tk ${g.state} ${g.redZone ? 'rz' : ''} ${mine ? 'has-me' : ''}">
+  return `<li class="tk ${g.state} ${g.redZone ? 'rz' : ''} ${mine ? 'has-me' : ''} ${openId === g.id ? 'open' : ''}" data-gid="${esc(g.id)}" role="button" tabindex="0" aria-expanded="${openId === g.id}">
     <div class="tk-teams">${team(g.away)}${team(g.home)}</div>
     <div class="tk-foot"><span class="tk-when">${esc(when(g))}${g.state === 'in' && g.redZone ? ' · <em>RZ</em>' : ''}</span>${dots ? `<span class="tk-dots">${dots}</span>` : ''}</div>
   </li>`;
+}
+
+// Who's in this game: your players and your opponent's, with points so far
+// (from the last data refresh) and their projection.
+function detail(g, ctx) {
+  const f1 = (x) => (Math.round((x || 0) * 10) / 10).toFixed(1);
+  const pos = (p) => (p.p === 'DST' ? 'D/ST' : p.p);
+  const inGame = (p) => p.t === g.away.id || p.t === g.home.id;
+  const side = (label, cls, players) => {
+    if (!players.length) return '';
+    const total = players.filter((p) => p.starter).reduce((a, p) => a + (p.ap || 0), 0);
+    const rows = players.map((p) => `<li class="${p.starter ? '' : 'bench'}">
+        <span class="tkd-pos">${p.starter ? pos(p) : 'BN'}</span>
+        <span class="tkd-name">${esc(p.n)}</span>
+        <span class="tkd-pts">${g.state === 'pre' ? `<small>proj</small> ${f1(p.pw)}` : f1(p.ap)}</span></li>`).join('');
+    return `<div class="tkd-side ${cls}"><div class="tkd-head"><b>${label}</b>${g.state !== 'pre' ? `<span>${f1(total)} pts</span>` : ''}</div><ul>${rows}</ul></div>`;
+  };
+  const mine = (ctx?.myAll || []).filter(inGame);
+  const theirs = (ctx?.theirs || []).filter(inGame).map((p) => ({ ...p, starter: true }));
+  const body = side('You', 'me', mine) + side(ctx?.oppName || 'Opponent', 'opp', theirs);
+  const title = `${esc(g.away.ab)} ${g.state !== 'pre' ? esc(g.away.score) : ''} at ${esc(g.home.ab)} ${g.state !== 'pre' ? esc(g.home.score) : ''} · ${esc(when(g))}`;
+  return `<div class="tk-detail"><div class="tkd-title">${title}${g.state === 'in' && g.down ? ` · ${esc(g.down)}` : ''}</div>
+    ${body || '<p class="tkd-none">Nobody from your matchup is in this game.</p>'}
+    ${g.state === 'in' ? '<p class="tkd-note">Points update with each data refresh (about every 10 minutes).</p>' : ''}</div>`;
 }
 
 function draw() {
@@ -77,7 +103,8 @@ function draw() {
     || (a.state === 'post' ? b.kick - a.kick : a.kick - b.kick)
     || counts(b, ctx).mine - counts(a, ctx).mine);
   const scroll = el.querySelector('ul')?.scrollLeft || 0;
-  el.innerHTML = `<ul aria-label="NFL scores">${sorted.map((g) => chip(g, ctx)).join('')}</ul>`;
+  const open = games.find((g) => g.id === openId);
+  el.innerHTML = `<ul aria-label="NFL scores">${sorted.map((g) => chip(g, ctx)).join('')}</ul>${open ? detail(open, ctx) : ''}`;
   el.querySelector('ul').scrollLeft = scroll;
   el.hidden = false;
 }
@@ -99,6 +126,14 @@ async function tick() {
 export function startTicker(element, context) {
   el = element;
   getContext = context;
+  const toggle = (e) => {
+    const li = e.target.closest('.tk');
+    if (!li) return;
+    openId = openId === li.dataset.gid ? null : li.dataset.gid;
+    draw();
+  };
+  el.addEventListener('click', toggle);
+  el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(e); } });
   tick();
   document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
 }

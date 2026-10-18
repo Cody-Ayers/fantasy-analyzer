@@ -749,7 +749,10 @@ function tickerContext() {
   if (!s?.me) return null;
   const starters = (id) => A.rosterOf(s, id).filter((p) => !['BE', 'IR'].includes(p.s));
   const oppId = A.thisWeek(s).oppId;
-  return { mine: starters(s.me), theirs: oppId ? starters(oppId) : [] };
+  // All your players (bench too, marked), starters first.
+  const myAll = A.rosterOf(s, s.me).filter((p) => p.s !== 'IR')
+    .map((p) => ({ ...p, starter: p.s !== 'BE' })).sort((a, b) => b.starter - a.starter);
+  return { mine: starters(s.me), theirs: oppId ? starters(oppId) : [], myAll, oppName: s.teams.find((t) => t.id === oppId)?.name };
 }
 
 init().then(() => {
