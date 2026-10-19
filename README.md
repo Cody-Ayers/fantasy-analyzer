@@ -8,6 +8,8 @@ morning, and the site works like an app on your phone's home screen.
 **Want it for your league?** Follow [Set it up for your own league](#set-it-up-for-your-own-league)
 below. It takes about 10 minutes and needs only a free GitHub account.
 
+> **How it was built:** I designed this app and built it with AI-assisted development using [Claude Code](https://claude.com/claude-code). I decided the features and rules, tested it, and directed each change.
+
 ## Features
 
 - **Team:** your best legal lineup for the week and your win chance against this week's opponent
